@@ -18,24 +18,24 @@ jobs:
         branch: [devel, version-1-0]
         target: [android, linux, macos, windows]
         arch: [32, 64, armv6, armv7, armv7a, arm64]
-      exclude:
-        - target: [macos, windows]
-          arch: [armv6, armv7, armv7a, arm64]
-        - target: android
-          arch: [armv6, armv7, armv7a]
-      include:
-        - target: android
-          os: ubuntu-18.04
-          osvar: android
-        - target: linux
-          os: ubuntu-18.04
-          osvar: linux
-        - target: macos
-          os: macos-10.15
-          osvar: osx
-        - target: windows
-          os: windows-2019
-          osvar: windows
+        exclude:
+          - target: [macos, windows]
+            arch: [armv6, armv7, armv7a, arm64]
+          - target: android
+            arch: [armv6, armv7, armv7a]
+        include:
+          - target: android
+            os: ubuntu-18.04
+            osvar: android
+          - target: linux
+            os: ubuntu-18.04
+            osvar: linux
+          - target: macos
+            os: macos-10.15
+            osvar: osx
+          - target: windows
+            os: windows-2019
+            osvar: windows
     name: ${{ matrix.target }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     env:
