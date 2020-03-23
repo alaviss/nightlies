@@ -49,6 +49,7 @@ jobs:
           ref: ${{ matrix.branch }}
           path: nim
       - name: Checkout csources
+        uses: actions/checkout@v2
         with:
           repository: nim-lang/csources
           path: nim/csources
