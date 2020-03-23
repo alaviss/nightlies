@@ -16,32 +16,61 @@ jobs:
     strategy:
       matrix:
         branch: [devel, version-1-0]
-        target: [android, linux, macos, windows]
-        arch: [32, 64, armv6, armv7, armv7a, arm64]
-        exclude:
-          - target: [macos, windows]
-            arch: [armv6, armv7, armv7a, arm64]
-          - target: android
-            arch: [armv6, armv7, armv7a]
+        target:
+          - android-arm64
+          - linux-armv6
+          - linux-armv7
+          - linux-armv7a
+          - linux-arm64
+          - linux-32
+          - linux-64
+          - macos-64
+          - windows-32
+          - windows-64
         include:
-          - target: android
+          - target: android-arm64
             os: ubuntu-18.04
             osvar: android
-          - target: linux
+          - target: linux-armv6
             os: ubuntu-18.04
             osvar: linux
-          - target: macos
+          - target: linux-armv7
+            os: ubuntu-18.04
+            osvar: linux
+          - target: linux-armv7a
+            os: ubuntu-18.04
+            osvar: linux
+          - target: linux-arm64
+            os: ubuntu-18.04
+            osvar: linux
+          - target: linux-32
+            os: ubuntu-18.04
+            osvar: linux
+          - target: linux-64
+            os: ubuntu-18.04
+            osvar: linux
+          - target: macos-64
             os: macos-10.15
             osvar: osx
-          - target: windows
+          - target: windows-32
             os: windows-2019
             osvar: windows
-    name: ${{ matrix.target }} ${{ matrix.arch }}
+          - target: windows-64
+            os: windows-2019
+            osvar: windows
+    name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     env:
-      ARCH: ${{ matrix.arch }}
       OSVAR: ${{ matrix.osvar }}
     steps:
+      - name: Setup environment
+        shell: bash
+        run: |
+          ARCH='${{ matrix.target }}'
+          ARCH=${ARCH%%*-}
+          echo "ARCH: $ARCH"
+          echo "::set-env name=ARCH::$ARCH"
+
       - name: Checkout
         uses: actions/checkout@v2
       - name: Checkout Nim
