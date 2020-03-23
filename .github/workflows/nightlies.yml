@@ -1,0 +1,74 @@
+name: Nightlies
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        branch: [devel, version-1-0]
+        target: [android, linux, macos, windows]
+        arch: [32, 64, armv6, armv7, armv7a, arm64]
+      exclude:
+        - target: [macos, windows]
+          arch: [armv6, armv7, armv7a, arm64]
+        - target: android
+          arch: [armv6, armv7, armv7a]
+      include:
+        - target: android
+          os: ubuntu-18.04
+          osvar: android
+        - target: linux
+          os: ubuntu-18.04
+          osvar: linux
+        - target: macos
+          os: macos-10.15
+          osvar: osx
+        - target: windows
+          os: windows-2019
+          osvar: windows
+    name: ${{ matrix.target }} ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    env:
+      ARCH: ${{ matrix.arch }}
+      OSVAR: ${{ matrix.osvar }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Checkout Nim
+        uses: actions/checkout@v2
+        with:
+          repository: nim-lang/Nim
+          ref: ${{ matrix.branch }}
+          path: nim
+      - name: Checkout csources
+        with:
+          repository: nim-lang/csources
+          path: nim/csources
+
+      - name: Install node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 8.x
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+            libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install boehmgc sfml gnu-tar node
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir dist
+          curl -L "https://nim-lang.org/download/mingw$ARCH-6.3.0.7z" -o "dist/mingw${ARCH}.7z"
+          7z x "dist/mingw$ARCH.7z" -odist
