@@ -92,7 +92,7 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install -yq \
             libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
