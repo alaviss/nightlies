@@ -16,11 +16,11 @@ jobs:
         branch: [devel, version-1-0]
         target: [android, linux, macos, windows]
         arch: [32, 64, armv6, armv7, armv7a, arm64]
-      exclude:
-        - target: [macos, windows]
-          arch: [armv6, armv7, armv7a, arm64]
-        - target: android
-          arch: [armv6, armv7, armv7a]
+        #      exclude:
+        #        - target: [macos, windows]
+        #          arch: [armv6, armv7, armv7a, arm64]
+        #        - target: android
+        #          arch: [armv6, armv7, armv7a]
       include:
         - target: android
           os: ubuntu-18.04
