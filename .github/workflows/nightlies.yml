@@ -83,7 +83,6 @@ jobs:
         with:
           repository: nim-lang/Nim
           ref: ${{ matrix.branch }}
-          path: nim
 
       - name: Install node.js
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -139,7 +138,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: nim-lang/csources
-          path: nim/csources
+          path: csources
 
       - name: Build 1-stage csources compiler
         if: steps.nim-cache.outputs.cache-hit != 'true'
