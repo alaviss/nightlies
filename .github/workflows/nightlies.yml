@@ -226,7 +226,7 @@ jobs:
             cp build/nim-$nimVersion.tar.xz $releaseName$ext
           fi
 
-          echo "::add-output name=artifact::$releaseName$ext"
+          echo "::set-output name=artifact::$releaseName$ext"
 
       - name: Upload release file
         if: steps.nim-cache.outputs.cache-hit != 'true'
