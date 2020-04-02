@@ -211,7 +211,7 @@ jobs:
         id: release
         shell: bash
         run:
-          nimVersion=$(echo 'echo NimVersion; quit 0' | nim secret --hints:off')
+          nimVersion=$(echo 'echo NimVersion; quit 0' | nim secret --hints:off)
           if [[ '${{ runner.os }}' == 'Linux' ]]; then
             releaseName=nim-$nimVersion-staging
           else
