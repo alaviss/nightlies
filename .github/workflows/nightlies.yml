@@ -17,16 +17,16 @@ jobs:
       matrix:
         branch: [devel, version-1-2]
         target:
-          - os: android
-            cpu: arm64
-          - os: linux
-            cpu: armv6
-          - os: linux
-            cpu: armv7a
-          - os: linux
-            cpu: armv7
-          - os: linux
-            cpu: armv64
+          #- os: android
+          #  cpu: arm64
+          #- os: linux
+          #  cpu: armv6
+          #- os: linux
+          #  cpu: armv7a
+          #- os: linux
+          #  cpu: armv7
+          #- os: linux
+          #  cpu: armv64
           - os: linux
             cpu: i386
           - os: linux
@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: bin
-          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.nim }}-test'
+          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.nim }}-test1'
 
       - name: Checkout
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -93,15 +93,14 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: |
-          steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Linux' &&
-          matrix.target.cpu == 'amd64'
+          steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install -yq \
             libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
 
       - name: Install dependencies (macOS)
         if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'macOS'
-        run: brew install boehmgc sfml gnu-tar node
+        run: brew install boehmgc sfml gnu-tar
 
       - name: Install dependencies (Windows)
         if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
@@ -131,11 +130,108 @@ jobs:
         uses: actions/cache@v1
         with:
           path: bin
-          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.csources }}-test'
+          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.csources }}-test1'
 
       - name: Checkout csources
-        if: steps.csources-cache.outputs.cache-hit != 'true'
+        if: |
+          steps.nim-cache.outputs.cache-hit != 'true' &&
+          steps.csources-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nim-lang/csources
           path: nim/csources
+
+      - name: Build 1-stage csources compiler
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          ncpu=
+          ext=
+          case '${{ runner.os }}' in
+          'Linux')
+            ncpu=$(nproc)
+            ;;
+          'macOS')
+            ncpu=$(sysctl -n hw.ncpu)
+            ;;
+          'Windows')
+            ncpu=$NUMBER_OF_PROCESSORS
+            ext=.exe
+            ;;
+          esac
+          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+
+          if [[ ! -e bin/nim-csources$ext ]]; then
+            make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
+            cp bin/nim{,-csources}$ext
+          else
+            echo 'Cache hit, using prebuilt csources'
+            cp bin/nim{-csources,}$ext
+          fi
+
+      - name: Build koch
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: nim c koch
+
+      - name: Build native compiler
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: ./koch boot -d:release
+
+      - name: Build tools
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows' # windows release step bundled all of these
+        shell: bash
+        run: ./koch tools
+
+      - name: Generate documentation
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        shell: bash
+        run: ./koch doc
+
+      - name: Generate csources
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        shell: bash
+        run: ./koch csources -d:release
+
+      - name: Create release tarball (for non-Windows)
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
+        shell: bash
+        run: ./koch xz -d:release
+
+      - name: Create Windows release zip
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        shell: bash
+        run: |
+          nim c -o:winrelease.exe tools/winrelease
+          mkdir -p web/upload/download
+          ./winrelease
+
+      - name: Prepare release file for upload
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        id: release
+        shell: bash
+        run:
+          nimVersion=$(echo 'echo NimVersion; quit 0' | nim secret --hints:off')
+          if [[ '${{ runner.os }}' == 'Linux' ]]; then
+            releaseName=nim-$nimVersion-staging
+          else
+            releaseName=nim-$nimVersion-${{ matrix.target.os }}_${{ matrix.target.cpu }}
+          fi
+          ext=
+          if [[ '${{ runner.os }}' == 'Windows' ]]; then
+            ext=.zip
+            cp web/upload/download/nim-$nimVersion.zip $releaseName$ext
+          else
+            ext=.tar.xz
+            cp build/nim-$nimVersion.tar.xz $releaseName$ext
+          fi
+
+          echo "::add-output name=artifact::$releaseName$ext"
+
+      - name: Upload release file
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ steps.release.outputs.artifact }}
+          path: ${{ steps.release.outputs.artifact }}
