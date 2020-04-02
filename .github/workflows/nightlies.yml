@@ -15,62 +15,39 @@ jobs:
   build:
     strategy:
       matrix:
-        branch: [devel, version-1-0]
-        target:
-          - android-arm64
-          - linux-armv6
-          - linux-armv7
-          - linux-armv7a
-          - linux-arm64
-          - linux-32
-          - linux-64
-          - macos-64
-          - windows-32
-          - windows-64
+        branch: [devel, version-1-2]
+        - target: android
+          osarch: arm64
+        - target: linux
+          osarch: armv6
+        - target: linux
+          osarch: armv7a
+        - target: linux
+          osarch: armv7
+        - target: linux
+          osarch: armv64
+        - target: linux
+          osarch: 32
+        - target: linux
+          osarch: 64
+        - target: macos
+          osarch: 64
+        - target: windows
+          osarch: 32
+        - target: windows
+          osarch: 64
         include:
-          - target: android-arm64
+          - target: android
             os: ubuntu-18.04
-            osvar: android
-          - target: linux-armv6
+          - target: linux
             os: ubuntu-18.04
-            osvar: linux
-          - target: linux-armv7
-            os: ubuntu-18.04
-            osvar: linux
-          - target: linux-armv7a
-            os: ubuntu-18.04
-            osvar: linux
-          - target: linux-arm64
-            os: ubuntu-18.04
-            osvar: linux
-          - target: linux-32
-            os: ubuntu-18.04
-            osvar: linux
-          - target: linux-64
-            os: ubuntu-18.04
-            osvar: linux
           - target: macos-64
             os: macos-10.15
-            osvar: osx
-          - target: windows-32
+          - target: windows
             os: windows-2019
-            osvar: windows
-          - target: windows-64
-            os: windows-2019
-            osvar: windows
-    name: ${{ matrix.target }}
+    name: '${{ matrix.target }} (${{ matrix.osarch }})'
     runs-on: ${{ matrix.os }}
-    env:
-      OSVAR: ${{ matrix.osvar }}
     steps:
-      - name: Setup environment
-        shell: bash
-        run: |
-          ARCH='${{ matrix.target }}'
-          ARCH=${ARCH%%*-}
-          echo "ARCH: $ARCH"
-          echo "::set-env name=ARCH::$ARCH"
-
       - name: Checkout
         uses: actions/checkout@v2
       - name: Checkout Nim
