@@ -18,25 +18,25 @@ jobs:
         branch: [devel, version-1-2]
         target:
           - os: android
-            osarch: arm64
+            cpu: arm64
           - os: linux
-            osarch: armv6
+            cpu: armv6
           - os: linux
-            osarch: armv7a
+            cpu: armv7a
           - os: linux
-            osarch: armv7
+            cpu: armv7
           - os: linux
-            osarch: armv64
+            cpu: armv64
           - os: linux
-            osarch: i386
+            cpu: i386
           - os: linux
-            osarch: amd64
+            cpu: amd64
           - os: macos
-            osarch: amd64
+            cpu: amd64
           - os: windows
-            osarch: i386
+            cpu: i386
           - os: windows
-            osarch: amd64
+            cpu: amd64
         include:
           - target:
               os: android
@@ -50,39 +50,92 @@ jobs:
           - target:
               os: windows
             builder: windows-2019
-    name: '${{ matrix.target.os }}-${{ matrix.target.osarch }} (${{ matrix.branch }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Get versions
+        id: versions
+        shell: bash
+        run: |
+          getHash() {
+            git ls-remote https://github.com/"$0" "$1" | cut -f 1
+          }
+
+          nimHash=$(getHash nim-lang/Nim '${{ matrix.branch }}')
+          csourcesHash=$(getHash nim-lang/csources master)
+          echo "::set-output name=nim::$nimHash"
+          echo "::set-output name=csources::$csourcesHash"
+
+      - name: Restore Nim from cache
+        id: nim-cache
+        uses: actions/cache@v1
+        with:
+          path: bin
+          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.nim }}-test'
+
       - name: Checkout
+        if: steps.nim-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
+
       - name: Checkout Nim
+        if: steps.nim-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nim-lang/Nim
           ref: ${{ matrix.branch }}
           path: nim
+
+      - name: Install node.js
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v1
+        with:
+          node-version: 8.x
+
+      - name: Install dependencies (Linux)
+        if: |
+          steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Linux' &&
+          matrix.target.cpu == 'amd64'
+        run: |
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install -yq \
+            libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
+
+      - name: Install dependencies (macOS)
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'macOS'
+        run: brew install boehmgc sfml gnu-tar node
+
+      - name: Install dependencies (Windows)
+        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir dist
+          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+            arch=64
+          else
+            arch=32
+          fi
+          curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "dist/mingw$arch.7z"
+          curl -L "https://nim-lang.org/download/windeps.zip" -o dist/windeps.zip
+          7z x "dist/mingw$arch.7z" -odist
+          7z x "dist/windeps.zip" -obin
+
+          echo '::add-path::${{ github.workspace }}'"/dist/mingw$arch/bin"
+
+      - name: Setup environment
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: echo '::add-path::${{ github.workspace }}/bin'
+
+      - name: Restore csources from cache
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        id: csources-cache
+        uses: actions/cache@v1
+        with:
+          path: bin
+          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.csources }}-test'
+
       - name: Checkout csources
+        if: steps.csources-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nim-lang/csources
           path: nim/csources
-
-      - name: Install node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 8.x
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install -yq \
-            libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install boehmgc sfml gnu-tar node
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          mkdir dist
-          curl -L "https://nim-lang.org/download/mingw$ARCH-6.3.0.7z" -o "dist/mingw${ARCH}.7z"
-          7z x "dist/mingw$ARCH.7z" -odist
