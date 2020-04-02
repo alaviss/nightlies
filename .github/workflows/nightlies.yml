@@ -16,37 +16,42 @@ jobs:
     strategy:
       matrix:
         branch: [devel, version-1-2]
-        - target: android
-          osarch: arm64
-        - target: linux
-          osarch: armv6
-        - target: linux
-          osarch: armv7a
-        - target: linux
-          osarch: armv7
-        - target: linux
-          osarch: armv64
-        - target: linux
-          osarch: 32
-        - target: linux
-          osarch: 64
-        - target: macos
-          osarch: 64
-        - target: windows
-          osarch: 32
-        - target: windows
-          osarch: 64
+        target:
+          - os: android
+            osarch: arm64
+          - os: linux
+            osarch: armv6
+          - os: linux
+            osarch: armv7a
+          - os: linux
+            osarch: armv7
+          - os: linux
+            osarch: armv64
+          - os: linux
+            osarch: 32
+          - os: linux
+            osarch: 64
+          - os: macos
+            osarch: 64
+          - os: windows
+            osarch: 32
+          - os: windows
+            osarch: 64
         include:
-          - target: android
-            os: ubuntu-18.04
-          - target: linux
-            os: ubuntu-18.04
-          - target: macos-64
-            os: macos-10.15
-          - target: windows
-            os: windows-2019
-    name: '${{ matrix.target }} (${{ matrix.osarch }})'
-    runs-on: ${{ matrix.os }}
+          - target:
+              os: android
+            builder: ubuntu-18.04
+          - target:
+              os: linux
+            builder: ubuntu-18.04
+          - target:
+              os: macos
+            builder: macos-10.15
+          - target:
+              os: windows
+            builder: windows-2019
+    name: '${{ matrix.target.os }} (${{ matrix.osarch }})'
+    runs-on: ${{ matrix.builder }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
