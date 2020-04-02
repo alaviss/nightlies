@@ -161,7 +161,7 @@ jobs:
           [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
           if [[ ! -e bin/nim-csources$ext ]]; then
-            make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
+            make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.target.cpu }}'
             cp bin/nim{,-csources}$ext
           else
             echo 'Cache hit, using prebuilt csources'
