@@ -28,15 +28,15 @@ jobs:
           - os: linux
             osarch: armv64
           - os: linux
-            osarch: 32
+            osarch: i386
           - os: linux
-            osarch: 64
+            osarch: amd64
           - os: macos
-            osarch: 64
+            osarch: amd64
           - os: windows
-            osarch: 32
+            osarch: i386
           - os: windows
-            osarch: 64
+            osarch: amd64
         include:
           - target:
               os: android
@@ -50,7 +50,7 @@ jobs:
           - target:
               os: windows
             builder: windows-2019
-    name: '${{ matrix.target.os }} (${{ matrix.osarch }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.osarch }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Checkout
