@@ -38,9 +38,9 @@ jobs:
           - os: windows
             cpu: amd64
         include:
-          - target:
-              os: android
-            builder: ubuntu-18.04
+          #- target:
+          #    os: android
+          #  builder: ubuntu-18.04
           - target:
               os: linux
             builder: ubuntu-18.04
