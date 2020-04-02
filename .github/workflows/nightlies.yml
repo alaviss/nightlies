@@ -210,7 +210,7 @@ jobs:
         if: steps.nim-cache.outputs.cache-hit != 'true'
         id: release
         shell: bash
-        run:
+        run: |
           nimVersion=$(echo 'echo NimVersion; quit 0' | nim secret --hints:off)
           if [[ '${{ runner.os }}' == 'Linux' ]]; then
             releaseName=nim-$nimVersion-staging
