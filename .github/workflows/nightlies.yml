@@ -60,7 +60,7 @@ jobs:
           path: nim
 
       - name: Checkout csources
-        if: <
+        if: >
           steps.nim-cache.outputs.cache-hit != 'true' &&
           steps.csources-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
