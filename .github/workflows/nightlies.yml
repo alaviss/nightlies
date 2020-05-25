@@ -12,53 +12,23 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  build:
+  source:
     strategy:
       matrix:
         branch: [devel, version-1-2]
-        target:
-          #- os: android
-          #  cpu: arm64
-          #- os: linux
-          #  cpu: armv6
-          #- os: linux
-          #  cpu: armv7a
-          #- os: linux
-          #  cpu: armv7
-          #- os: linux
-          #  cpu: armv64
-          #- os: linux
-          #  cpu: i386
-          - os: linux
-            cpu: amd64
-          - os: macos
-            cpu: amd64
-          - os: windows
-            cpu: i386
-          - os: windows
-            cpu: amd64
-        include:
-          #- target:
-          #    os: android
-          #  builder: ubuntu-18.04
-          - target:
-              os: linux
-            builder: ubuntu-18.04
-          - target:
-              os: macos
-            builder: macos-10.15
-          - target:
-              os: windows
-            builder: windows-2019
-    name: 'Staging ${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.branch }})'
-    runs-on: ${{ matrix.builder }}
+    name: 'Generate source package for branch ${{ matrix.branch }}'
+    runs-on: ubuntu-18.04
+    outputs:
+      archive: ${{ steps.source-archive.archive }}
+      commit: ${{ steps.versions.nim }}
+      branch: ${{ matrix.branch }}
     steps:
       - name: Get versions
         id: versions
         shell: bash
         run: |
           getHash() {
-            git ls-remote https://github.com/"$1" "$2" | cut -f 1
+            git ls-remote "https://github.com/$1" "$2" | cut -f 1
           }
 
           nimHash=$(getHash nim-lang/Nim '${{ matrix.branch }}')
@@ -70,58 +40,8 @@ jobs:
         id: nim-cache
         uses: actions/cache@v1
         with:
-          path: bin
-          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.nim }}-test1'
-
-      - name: Checkout
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-
-      - name: Checkout Nim
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/Nim
-          ref: ${{ matrix.branch }}
-
-      - name: Install node.js
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-node@v1
-        with:
-          node-version: 8.x
-
-      - name: Install dependencies (Linux)
-        if: |
-          steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
-        run: |
-          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install -yq \
-            libcurl4-openssl-dev libsdl1.2-dev libgc-dev libsfml-dev
-
-      - name: Install dependencies (macOS)
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'macOS'
-        run: brew install boehmgc sfml gnu-tar
-
-      - name: Install dependencies (Windows)
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
-        shell: bash
-        run: |
-          mkdir dist
-          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
-            arch=64
-          else
-            arch=32
-          fi
-          curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "dist/mingw$arch.7z"
-          curl -L "https://nim-lang.org/download/windeps.zip" -o dist/windeps.zip
-          7z x "dist/mingw$arch.7z" -odist
-          7z x "dist/windeps.zip" -obin
-
-          echo '::add-path::${{ github.workspace }}'"/dist/mingw$arch/bin"
-
-      - name: Setup environment
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: echo '::add-path::${{ github.workspace }}/bin'
+          path: output
+          key: '${{ steps.versions.outputs.nim }}-test'
 
       - name: Restore csources from cache
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -129,10 +49,18 @@ jobs:
         uses: actions/cache@v1
         with:
           path: bin
-          key: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.csources }}-test1'
+          key: '${{ runner.os }}-${{ steps.versions.outputs.csources }}-test'
+
+      - name: Checkout Nim
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: nim-lang/Nim
+          ref: ${{ steps.versions.outputs.nim }}
+          path: nim
 
       - name: Checkout csources
-        if: |
+        if: <
           steps.nim-cache.outputs.cache-hit != 'true' &&
           steps.csources-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
@@ -140,97 +68,42 @@ jobs:
           repository: nim-lang/csources
           path: csources
 
+      - name: Setup environment
+        shell: bash
+        run: echo '::add-path::${{ github.workspace }}/nim/bin'
+
       - name: Build 1-stage csources compiler
         if: steps.nim-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ncpu=
-          ext=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ext=.exe
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-          if [[ ! -e bin/nim-csources$ext ]]; then
-            make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.target.cpu }}'
-            cp bin/nim{,-csources}$ext
+          if [[ ! -e csources/bin/nim ]]; then
+            make -C csources -j $ncpu CC=gcc
           else
-            echo 'Cache hit, using prebuilt csources'
-            cp bin/nim{-csources,}$ext
+            echo 'Using prebuilt csources'
           fi
+          cp csources/bin/nim nim/bin
 
-      - name: Build koch
+      - name: Build compiler
         if: steps.nim-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: nim c koch
-
-      - name: Build native compiler
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: ./koch boot -d:release
-
-      - name: Build tools
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows' # windows release step bundled all of these
-        shell: bash
-        run: ./koch tools
-
-      - name: Generate documentation
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        shell: bash
-        run: ./koch doc
-
-      - name: Generate csources
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        shell: bash
-        run: ./koch csources -d:release
-
-      - name: Create release tarball (for non-Windows)
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
-        shell: bash
-        run: ./koch xz -d:release
-
-      - name: Create Windows release zip
-        if: steps.nim-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
         shell: bash
         run: |
-          nim c -o:winrelease.exe tools/winrelease
-          mkdir -p web/upload/download
-          ./winrelease
+          cd nim
+          nim c koch
+          ./koch boot -d:release
 
-      - name: Prepare release file for upload
+      - name: Build source archive
+        id: source-archive
         if: steps.nim-cache.outputs.cache-hit != 'true'
-        id: release
         shell: bash
         run: |
-          nimVersion=$(echo 'echo NimVersion; quit 0' | nim secret --hints:off)
-          if [[ '${{ runner.os }}' == 'Linux' ]]; then
-            releaseName=nim-$nimVersion-staging
-          else
-            releaseName=nim-$nimVersion-${{ matrix.target.os }}_${{ matrix.target.cpu }}
-          fi
-          ext=
-          if [[ '${{ runner.os }}' == 'Windows' ]]; then
-            ext=.zip
-            cp web/upload/download/nim-$nimVersion.zip $releaseName$ext
-          else
-            ext=.tar.xz
-            cp build/nim-$nimVersion.tar.xz $releaseName$ext
-          fi
+          cd nim
+          ./koch csources -d:release
+          ./koch xz
 
-          echo "::set-output name=artifact::$releaseName$ext"
-
-      - name: Upload release file
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/upload-artifact@v1
-        with:
-          name: ${{ steps.release.outputs.artifact }}
-          path: ${{ steps.release.outputs.artifact }}
+          output=(build/nim-*.tar.xz)
+          echo "::set-output name=archive::$(realpath -z "$output")"
+  builder:
+    runs-on: ubuntu-latest
+    needs: source
+    steps:
+      - run: echo '${{ toJson(needs) }}'
