@@ -184,25 +184,31 @@ jobs:
           path: source
 
       - name: Extract source package
+        id: source
         shell: bash
         run: |
+          source=( source/nim-*.tar.xz )
+          version="${source[0]##*nim-}"
+          version="${version%.tar.xz}"
           case '${{ runner.os }}' in
             'Windows')
-              7z x source/nim-*.tar.xz
+              7z x -so "${source[0]}" | 7z x -si -ttar -aoa
               ;;
             'macOS')
-              bsdtar xf source/nim-*.tar.xz
+              bsdtar xf "${source[0]}"
               ;;
           esac
 
+          echo "::set-output name=version::$version"
+
       - name: Setup environment
         shell: bash
-        run: echo '::add-path::${{ github.workspace }}/'nim-*'/bin'
+        run: echo '::add-path::${{ github.workspace }}/nim-${{ steps.source.outputs.version }}/bin'
 
       - name: Build 1-stage csources compiler
         shell: bash
         run: |
-          cd nim-*
+          cd 'nim-${{ steps.source.outputs.version }}'
           nproc=
           case '${{ runner.os }}' in
             'Windows')
@@ -218,11 +224,11 @@ jobs:
       - name: Build koch
         shell: bash
         run:
-          cd nim-*
+          cd 'nim-${{ steps.source.outputs.version }}'
           nim c koch
 
       - name: Build compiler
         shell: bash
         run:
-          cd nim-*
+          cd 'nim-${{ steps.source.outputs.version }}'
           ./koch boot -d:release
