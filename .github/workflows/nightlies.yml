@@ -280,3 +280,34 @@ jobs:
         run: |
           cd 'nim-${{ steps.source.outputs.version }}'
           ./koch boot -d:release
+
+      - name: Build tools
+        shell: bash
+        run: |
+          cd 'nim-${{ steps.source.outputs.version }}'
+          ./koch tools -d:release
+
+      - name: Generate release zip files (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd 'nim-${{ steps.source.outputs.version }}'
+          mkdir -p web/upload/download
+
+          nim c --outdir:. tools/winrelease
+          ./winrelease
+
+      - name: Generate release tarball (non-Windows)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          nim='nim-${{ steps.source.outputs.version }}'
+          find "$nim" \
+            -name nimcache -prune -o \
+            -name '*.o' -o \
+            -path '*/compiler/nim' -o \
+            -path '*/compiler/nim?' | xargs rm -rf
+
+          release=$nim-'${{ matrix.target.os }}_${{ matrix.target.cpu }}'
+          bsdtar cf "$release.tar" "$nim"
+          xz -9e -T0 "$release.tar"
