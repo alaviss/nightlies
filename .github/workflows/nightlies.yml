@@ -162,11 +162,11 @@ jobs:
         version: ${{ fromJson(needs.setup.outputs.versions) }}
         target:
           - os: macosx
-            arch: amd64
+            cpu: amd64
           - os: windows
-            arch: amd64
+            cpu: amd64
           - os: windows
-            arch: i386
+            cpu: i386
         include:
           - target:
               os: macosx
@@ -194,11 +194,18 @@ jobs:
               if [[ ! -d external ]]; then
                 mkdir external
 
-                if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
-                  arch=64
-                else
-                  arch=32
-                fi
+                case '${{ matrix.target.cpu }}' in
+                  amd64)
+                    arch=64
+                    ;;
+                  i386)
+                    arch=32
+                    ;;
+                  *)
+                    echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
+                    exit 1
+                    ;;
+                esac
 
                 curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
                 curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
@@ -255,18 +262,21 @@ jobs:
             'macOS')
               nproc=$(sysctl -n hw.ncpu)
               ;;
+            *)
+              nproc=1
+              ;;
           esac
 
-          make -j$nproc CC=gcc
+          make -j$nproc CC=gcc ucpu='${{ matrix.target.cpu }}'
 
       - name: Build koch
         shell: bash
-        run:
+        run: |
           cd 'nim-${{ steps.source.outputs.version }}'
           nim c koch
 
       - name: Build compiler
         shell: bash
-        run:
+        run: |
           cd 'nim-${{ steps.source.outputs.version }}'
           ./koch boot -d:release
