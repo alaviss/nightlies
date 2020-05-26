@@ -144,7 +144,7 @@ jobs:
           ./koch xz
 
           mkdir -p output
-          cp nim/build/nim-*.tar.xz output
+          cp build/nim-*.tar.xz output
 
       - name: Upload source archive
         uses: actions/upload-artifact@v2
