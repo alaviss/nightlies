@@ -12,14 +12,15 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  fetchVersion:
-    name: 'Fetch latest commits for tracked branches'
+  setup:
+    name: 'build settings'
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.main.outputs.versions }}
+      versions: ${{ steps.matrix.outputs.versions }}
+      envronment: ${{ steps.env.outputs.environment }}
     steps:
-      - name: Get latest commits
-        id: main
+      - name: 'Generate version matrix'
+        id: matrix
         shell: bash
         run: |
           # Tracked branches
@@ -40,14 +41,34 @@ jobs:
 
           echo "::set-output name=versions::$(jq -c '.' versions.json)"
 
+      - name: 'Generate environment variables'
+        id: env
+        shell: bash
+        run: |
+          environment=(
+            ["SOURCE_CODE_EPOCH"]="$(date -u +%s)"
+          )
+
+          (
+            for var in "${!environment[@]}"; do
+              jq --null-input \
+                 --arg variable "$var" \
+                 --arg value "${environment[$var]}" \
+                 '{ $variable: $value }'
+            done
+          ) | jq -s 'reduce .[] as $item (null; . + $item)' | tee variables.json
+
+          echo "::set-output name=environment::$(jq -c '.' variables.json)"
+
   sourceArchive:
-    needs: fetchVersion
+    needs: setup
 
     strategy:
       matrix:
-        version: ${{ fromJson(needs.fetchVersion.outputs.versions) }}
-    name: 'Generate source packages (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+        version: ${{ fromJson(needs.setup.outputs.versions) }}
+    name: 'source (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     runs-on: ubuntu-latest
+    env: ${{ fromJson(needs.setup.outputs.environment) }}
     steps:
       - name: Get latest csources version
         id: csources-version
@@ -72,7 +93,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: csources/bin
-          key: 'csources-${{ runner.os }}-${{ steps.csource-version.outputs.commit }}-test'
+          key: 'csources-${{ runner.os }}-${{ steps.csources-version.outputs.commit }}-test'
 
       - name: Checkout Nim
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -122,14 +143,17 @@ jobs:
           ./koch csources -d:release
           ./koch xz
 
+          mkdir -p output
+          cp nim/build/nim-*.tar.xz output
+
       - name: Upload source archive
         uses: actions/upload-artifact@v2
         with:
           name: 'nim-${{ matrix.version.commit }}'
-          path: nim/build/nim-*.tar.xz
+          path: nim/output/*
 
-  builder:
-    needs: [ fetchVersion, sourceArchive ]
+  build:
+    needs: [ setup, sourceArchive ]
 
     strategy:
       matrix:
@@ -149,6 +173,7 @@ jobs:
               os: windows
             builder: windows-2019
 
+    env: ${{ fromJson(needs.setup.outputs.environment) }}
     runs-on: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     steps:
       - name: Download generated source package
@@ -156,3 +181,43 @@ jobs:
         with:
           name: 'nim-${{ matrix.version.commit }}'
           path: source
+
+      - name: Extract source package
+        shell: bash
+        run: |
+          case '${{ runner.os }}'
+            'Windows')
+              7z x source/nim-*.tar.xz
+            'macOS')
+              bsdtar xf source/nim-*.tar.xz
+          esac
+
+      - name: Setup environment
+        shell: bash
+        run: echo '::add-path::${{ github.workspace }}/'nim-*'/bin'
+
+      - name: Build 1-stage csources compiler
+        shell: bash
+        run:
+          cd nim-*
+          nproc=
+          case '${{ runner.os }}'
+            'Windows')
+              nproc=$NUMBER_OF_PROCESSORS
+            'macOS')
+              nproc=$(sysctl hw.ncpu)
+          esac
+
+          make -j$nproc
+
+      - name: Build koch
+        shell: bash
+        run:
+          cd nim-*
+          nim c koch
+
+      - name: Build compiler
+        shell: bash
+        run:
+          cd nim-*
+          ./koch boot -d:release
