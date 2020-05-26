@@ -201,7 +201,7 @@ jobs:
 
       - name: Build 1-stage csources compiler
         shell: bash
-        run:
+        run: |
           cd nim-*
           nproc=
           case '${{ runner.os }}' in
