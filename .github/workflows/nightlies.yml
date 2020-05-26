@@ -179,23 +179,34 @@ jobs:
     name: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Cache dependencies (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v1
+        with:
+          path: external
+          key: 'deps-windows-test'
+
       - name: Install dependencies
         shell: bash
         run: |
           case '${{ runner.os }}' in
             'Windows')
-              mkdir external
+              if [[ ! -d external ]]; then
+                mkdir external
 
-              if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
-                arch=64
+                if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+                  arch=64
+                else
+                  arch=32
+                fi
+
+                curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
+                curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
+                7z x "external/mingw$arch.7z" -oexternal/
+                7z x external/windeps.zip -oexternal/dlls
               else
-                arch=32
+                echo "Using cached dependencies"
               fi
-
-              curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
-              curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
-              7z x "external/mingw$arch.7z" -oexternal/
-              7z x external/windeps.zip -o external/dlls
 
               echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
               echo '::add-path::${{ github.workspace }}'"/external/dlls"
@@ -242,7 +253,7 @@ jobs:
               nproc=$NUMBER_OF_PROCESSORS
               ;;
             'macOS')
-              nproc=$(sysctl hw.ncpu)
+              nproc=$(sysctl -n hw.ncpu)
               ;;
           esac
 
