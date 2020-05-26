@@ -156,6 +156,7 @@ jobs:
     needs: [ setup, sourceArchive ]
 
     strategy:
+      fail-fast: false
       matrix:
         version: ${{ fromJson(needs.setup.outputs.versions) }}
         target:
@@ -177,6 +178,31 @@ jobs:
     name: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Install dependencies
+        shell: bash
+        run:
+          case '${{ runner.os }}' in
+            'Windows')
+              mkdir external
+
+              if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+                arch=64
+              else
+                arch=32
+              fi
+
+              curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
+              curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
+              7z x "external/mingw$arch.7z" -oexternal/
+              7z x external/windeps.zip -o external/dlls
+
+              echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
+              echo '::add-path::${{ github.workspace }}'"/external/dlls"
+              ;;
+            'macOS')
+              ;;
+          esac
+
       - name: Download generated source package
         uses: actions/download-artifact@v2
         with:
@@ -219,7 +245,7 @@ jobs:
               ;;
           esac
 
-          make -j$nproc
+          make -j$nproc CC=gcc
 
       - name: Build koch
         shell: bash
