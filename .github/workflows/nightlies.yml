@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.matrix.outputs.versions }}
-      envronment: ${{ steps.env.outputs.environment }}
+      environment: ${{ steps.env.outputs.environment }}
     steps:
       - name: 'Generate version matrix'
         id: matrix
