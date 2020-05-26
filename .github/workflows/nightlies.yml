@@ -19,7 +19,7 @@ jobs:
       versions: ${{ steps.matrix.outputs.versions }}
       environment: ${{ steps.env.outputs.environment }}
     steps:
-      - name: 'Generate version matrix'
+      - name: Generate version matrix
         id: matrix
         shell: bash
         run: |
@@ -41,7 +41,7 @@ jobs:
 
           echo "::set-output name=versions::$(jq -c '.' versions.json)"
 
-      - name: 'Generate environment variables'
+      - name: Generate environment variables
         id: env
         shell: bash
         run: |
@@ -174,7 +174,8 @@ jobs:
             builder: windows-2019
 
     env: ${{ fromJson(needs.setup.outputs.environment) }}
-    runs-on: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+    runs-on: ${{ matrix.builder }}
     steps:
       - name: Download generated source package
         uses: actions/download-artifact@v2
