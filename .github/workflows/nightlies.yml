@@ -157,7 +157,7 @@ jobs:
 
     strategy:
       matrix:
-        version: ${{ fromJson(needs.sourceArchive.outputs.versions) }}
+        version: ${{ fromJson(needs.setup.outputs.versions) }}
         target:
           - os: macosx
             arch: amd64
