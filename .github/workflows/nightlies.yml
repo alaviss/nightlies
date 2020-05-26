@@ -54,7 +54,7 @@ jobs:
               jq --null-input \
                  --arg variable "$var" \
                  --arg value "${environment[$var]}" \
-                 '{ $variable: $value }'
+                 '{ ($variable): $value }'
             done
           ) | jq -s 'reduce .[] as $item (null; . + $item)' | tee variables.json
 
