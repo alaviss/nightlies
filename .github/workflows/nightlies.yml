@@ -70,7 +70,15 @@ jobs:
     runs-on: ubuntu-latest
     env: ${{ fromJson(needs.setup.outputs.environment) }}
     steps:
+      - name: Restore Nim from cache
+        id: nim-cache
+        uses: actions/cache@v1
+        with:
+          path: nim/output
+          key: 'source-${{ matrix.version.commit }}-test1'
+
       - name: Get latest csources version
+        if: steps.nim-cache.outputs.cache-hit != 'true'
         id: csources-version
         shell: bash
         run: |
@@ -79,13 +87,6 @@ jobs:
           }
 
           echo "::set-output name=commit::$(getHash nim-lang/csources master)"
-
-      - name: Restore Nim from cache
-        id: nim-cache
-        uses: actions/cache@v1
-        with:
-          path: nim/output
-          key: 'source-${{ matrix.version.commit }}-test1'
 
       - name: Restore csources from cache
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -180,7 +181,7 @@ jobs:
     steps:
       - name: Install dependencies
         shell: bash
-        run:
+        run: |
           case '${{ runner.os }}' in
             'Windows')
               mkdir external
