@@ -300,8 +300,8 @@ jobs:
           nim c --outdir:. tools/winrelease
           ./winrelease
 
-          artifact=$nim_x$arch.zip
-          cp -t '${{ github.workspace }}' "web/download/upload/"{"$artifact",'docs-${{ steps.source.outputs.version }}.zip'}
+          artifact=${nim}_x$arch.zip
+          cp -t '${{ github.workspace }}' "web/upload/download/"{"$artifact",'docs-${{ steps.source.outputs.version }}.zip'}
           echo "::set-env name=artifact::$artifact"
 
       - name: Generate release tarball (non-Windows)
