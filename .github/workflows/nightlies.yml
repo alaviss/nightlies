@@ -46,12 +46,8 @@ jobs:
     strategy:
       matrix:
         version: ${{ fromJson(needs.fetchVersion.outputs.versions) }}
-
-        # We want to reference the build VM for the cache.
-        builder: ubuntu-18.04
-
     name: 'Generate source packages (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
-    runs-on: ${{ matrix.builder }}
+    runs-on: ubuntu-latest
     steps:
       - name: Get latest csources version
         id: csources-version
@@ -76,7 +72,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: csources/bin
-          key: 'csources-${{ matrix.builder }}-${{ steps.csource-version.outputs.commit }}-test'
+          key: 'csources-${{ runner.os }}-${{ steps.csource-version.outputs.commit }}-test'
 
       - name: Checkout Nim
         if: steps.nim-cache.outputs.cache-hit != 'true'
