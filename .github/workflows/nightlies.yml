@@ -38,7 +38,7 @@ jobs:
             done
           ) | jq -s '.' | tee versions.json
 
-          echo "::set-output name=versions::$(cat versions.json)"
+          echo "::set-output name=versions::$(jq -c '.' versions.json)"
 
   sourceArchive:
     needs: fetchVersion
