@@ -12,51 +12,78 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
-  source:
+  fetchVersion:
+    name: 'Fetch latest commits for tracked branches'
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.main.outputs.versions }}
+    steps:
+      - name: Get latest commits
+        id: main
+        shell: bash
+        run: |
+          # Tracked branches
+          branches=( 'devel' 'version-1-2' )
+
+          getHash() {
+            git ls-remote "https://github.com/$1" "$2" | cut -f 1
+          }
+
+          (
+            for branch in "${branches[@]}"; do
+              jq --null-input \
+                 --arg branch "$branch" \
+                 --arg commit "$(getHash nim-lang/Nim "$branch")" \
+                 '{ branch: $branch, commit: $commit }'
+            done
+          ) | jq '[inputs]' | tee versions.json
+
+          echo "::set-output name=versions::$(cat versions.json)"
+
+  sourceArchive:
+    needs: fetchVersion
+
     strategy:
       matrix:
-        branch: [devel, version-1-2]
-    name: 'Generate source package for branch ${{ matrix.branch }}'
-    runs-on: ubuntu-18.04
-    outputs:
-      archive: ${{ steps.source-archive.archive }}
-      commit: ${{ steps.versions.nim }}
-      branch: ${{ matrix.branch }}
+        version: ${{ fromJson(needs.fetchVersion.outputs.versions) }}
+
+        # We want to reference the build VM for the cache.
+        builder: ubuntu-18.04
+
+    name: 'Generate source packages (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+    runs-on: ${{ matrix.builder }}
     steps:
-      - name: Get versions
-        id: versions
+      - name: Get latest csources version
+        id: csources-version
         shell: bash
         run: |
           getHash() {
             git ls-remote "https://github.com/$1" "$2" | cut -f 1
           }
 
-          nimHash=$(getHash nim-lang/Nim '${{ matrix.branch }}')
-          csourcesHash=$(getHash nim-lang/csources master)
-          echo "::set-output name=nim::$nimHash"
-          echo "::set-output name=csources::$csourcesHash"
+          echo "::set-output name=commit::$(getHash nim-lang/csources master)"
 
       - name: Restore Nim from cache
         id: nim-cache
         uses: actions/cache@v1
         with:
-          path: output
-          key: '${{ steps.versions.outputs.nim }}-test'
+          path: nim/output
+          key: 'source-${{ matrix.version.commit }}-test'
 
       - name: Restore csources from cache
         if: steps.nim-cache.outputs.cache-hit != 'true'
         id: csources-cache
         uses: actions/cache@v1
         with:
-          path: bin
-          key: '${{ runner.os }}-${{ steps.versions.outputs.csources }}-test'
+          path: csources/bin
+          key: 'csources-${{ matrix.builder }}-${{ steps.csource-version.outputs.commit }}-test'
 
       - name: Checkout Nim
         if: steps.nim-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nim-lang/Nim
-          ref: ${{ steps.versions.outputs.nim }}
+          ref: ${{ matrix.version.commit }}
           path: nim
 
       - name: Checkout csources
@@ -92,7 +119,6 @@ jobs:
           ./koch boot -d:release
 
       - name: Build source archive
-        id: source-archive
         if: steps.nim-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
@@ -100,13 +126,37 @@ jobs:
           ./koch csources -d:release
           ./koch xz
 
-          output=(build/nim-*.tar.xz)
-          echo "::set-output name=archive::$(realpath -z "$output")"
+      - name: Upload source archive
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'nim-${{ matrix.version.commit }}'
+          path: nim/build/nim-*.tar.xz
+
   builder:
+    needs: [ fetchVersion, sourceArchive ]
+
     strategy:
       matrix:
-        branch: [devel, version-1-2]
-    runs-on: ubuntu-latest
-    needs: source
+        version: ${{ fromJson(needs.sourceArchive.outputs.versions) }}
+        target:
+          - os: macosx
+            arch: amd64
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: i386
+        include:
+          - target:
+              os: macosx
+            builder: macos-10.15
+          - target:
+              os: windows
+            builder: windows-2019
+
+    runs-on: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     steps:
-      - run: echo '${{ toJson(needs) }}'
+      - name: Download generated source package
+        uses: actions/download-artifact@v2
+        with:
+          name: 'nim-${{ matrix.version.commit }}'
+          path: source
