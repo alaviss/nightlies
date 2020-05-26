@@ -85,7 +85,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: nim/output
-          key: 'source-${{ matrix.version.commit }}-test'
+          key: 'source-${{ matrix.version.commit }}-test1'
 
       - name: Restore csources from cache
         if: steps.nim-cache.outputs.cache-hit != 'true'
