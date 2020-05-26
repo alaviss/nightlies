@@ -45,7 +45,7 @@ jobs:
         id: env
         shell: bash
         run: |
-          environment=(
+          declare -A environment=(
             ["SOURCE_CODE_EPOCH"]="$(date -u +%s)"
           )
 
