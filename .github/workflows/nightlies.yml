@@ -176,7 +176,7 @@ jobs:
             builder: windows-2019
 
     env: ${{ fromJson(needs.setup.outputs.environment) }}
-    name: '${{ matrix.target.os }}-${{ matrix.target.arch }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Cache dependencies (Windows)
@@ -184,7 +184,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: external
-          key: 'deps-windows-test'
+          key: 'deps-windows-${{ matrix.target.cpu }}-test'
 
       - name: Install dependencies
         shell: bash
