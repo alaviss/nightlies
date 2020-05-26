@@ -165,6 +165,7 @@ jobs:
             cpu: amd64
           - os: windows
             cpu: amd64
+            docs: true
           - os: windows
             cpu: i386
         include:
@@ -191,21 +192,21 @@ jobs:
         run: |
           case '${{ runner.os }}' in
             'Windows')
+              case '${{ matrix.target.cpu }}' in
+                amd64)
+                  arch=64
+                  ;;
+                i386)
+                  arch=32
+                  ;;
+                *)
+                  echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
+                  exit 1
+                  ;;
+              esac
+
               if [[ ! -d external ]]; then
                 mkdir external
-
-                case '${{ matrix.target.cpu }}' in
-                  amd64)
-                    arch=64
-                    ;;
-                  i386)
-                    arch=32
-                    ;;
-                  *)
-                    echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
-                    exit 1
-                    ;;
-                esac
 
                 curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
                 curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
@@ -217,6 +218,7 @@ jobs:
 
               echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
               echo '::add-path::${{ github.workspace }}'"/external/dlls"
+              echo "::set-env name=arch::$arch"
               ;;
             'macOS')
               ;;
@@ -291,11 +293,16 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          cd 'nim-${{ steps.source.outputs.version }}'
+          nim='nim-${{ steps.source.outputs.version }}'
+          cd "$nim"
           mkdir -p web/upload/download
 
           nim c --outdir:. tools/winrelease
           ./winrelease
+
+          artifact=$nim_x$arch.zip
+          cp -t '${{ github.workspace }}' "web/download/upload/"{"$artifact",'docs-${{ steps.source.outputs.version }}.zip'}
+          echo "::set-env name=artifact::$artifact"
 
       - name: Generate release tarball (non-Windows)
         if: runner.os != 'Windows'
@@ -311,3 +318,18 @@ jobs:
           release=$nim-'${{ matrix.target.os }}_${{ matrix.target.cpu }}'
           bsdtar cf "$release.tar" "$nim"
           xz -9e -T0 "$release.tar"
+
+          echo "::set-env name=artifact::$release.tar.xz"
+
+      - name: Upload generated binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.artifact }}
+          path: ${{ env.artifact }}
+
+      - name: Upload generated docs
+        if: runner.os == 'Windows' && matrix.target.docs == 'true'
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'docs-${{ steps.source.outputs.version }}.zip'
+          path: 'docs-${{ steps.source.outputs.version }}.zip'
