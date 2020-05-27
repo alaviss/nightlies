@@ -207,8 +207,8 @@ jobs:
           if [[ ! -d external ]]; then
             mkdir external
 
-            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" | 7z x -si -oexternal/
-            curl -L "https://nim-lang.org/download/windeps.zip" | 7z x -si -oexternal/dlls
+            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" | 7z x -si -t7z -oexternal/
+            curl -L "https://nim-lang.org/download/windeps.zip" | 7z x -si -tzip -oexternal/dlls
           else
             echo "Using cached dependencies"
           fi
