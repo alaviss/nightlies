@@ -206,15 +206,19 @@ jobs:
 
           if [[ ! -d external ]]; then
             mkdir external
+            cd external
 
-            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" | 7z x -si -t7z -oexternal/
-            curl -L "https://nim-lang.org/download/windeps.zip" | 7z x -si -tzip -oexternal/dlls
+            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "mingw$arch.7z"
+            curl -L "https://nim-lang.org/download/windeps.zip" -o "windeps.zip"
+
+            7z x "mingw$arch.7z"
+            7z x -odlls "windeps.zip"
           else
             echo "Using cached dependencies"
           fi
 
-          echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
-          echo '::add-path::${{ github.workspace }}'"/external/dlls"
+          echo '::add-path::${{ github.workspace }}/external/'"mingw$arch"'/bin'
+          echo '::add-path::${{ github.workspace }}/external/dlls'
           echo "::set-env name=arch::$arch"
 
       - name: Download generated source package
