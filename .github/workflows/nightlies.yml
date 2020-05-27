@@ -185,44 +185,37 @@ jobs:
         uses: actions/cache@v1
         with:
           path: external
-          key: 'deps-windows-${{ matrix.target.cpu }}-test'
+          key: 'deps-windows-${{ matrix.target.cpu }}-test1'
 
-      - name: Install dependencies
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
         shell: bash
         run: |
-          case '${{ runner.os }}' in
-            'Windows')
-              case '${{ matrix.target.cpu }}' in
-                amd64)
-                  arch=64
-                  ;;
-                i386)
-                  arch=32
-                  ;;
-                *)
-                  echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
-                  exit 1
-                  ;;
-              esac
-
-              if [[ ! -d external ]]; then
-                mkdir external
-
-                curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
-                curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
-                7z x "external/mingw$arch.7z" -oexternal/
-                7z x external/windeps.zip -oexternal/dlls
-              else
-                echo "Using cached dependencies"
-              fi
-
-              echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
-              echo '::add-path::${{ github.workspace }}'"/external/dlls"
-              echo "::set-env name=arch::$arch"
+          case '${{ matrix.target.cpu }}' in
+            amd64)
+              arch=64
               ;;
-            'macOS')
+            i386)
+              arch=32
+              ;;
+            *)
+              echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
+              exit 1
               ;;
           esac
+
+          if [[ ! -d external ]]; then
+            mkdir external
+
+            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" | 7z x -si -oexternal/
+            curl -L "https://nim-lang.org/download/windeps.zip" | 7z x -si -oexternal/dlls
+          else
+            echo "Using cached dependencies"
+          fi
+
+          echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
+          echo '::add-path::${{ github.workspace }}'"/external/dlls"
+          echo "::set-env name=arch::$arch"
 
       - name: Download generated source package
         uses: actions/download-artifact@v2
@@ -317,7 +310,7 @@ jobs:
 
           release=$nim-'${{ matrix.target.os }}_${{ matrix.target.cpu }}'
           bsdtar cf "$release.tar" "$nim"
-          xz -9e -T0 "$release.tar"
+          xz -9e "$release.tar"
 
           echo "::set-env name=artifact::$release.tar.xz"
 
@@ -328,7 +321,7 @@ jobs:
           path: ${{ env.artifact }}
 
       - name: Upload generated docs
-        if: runner.os == 'Windows' && matrix.target.docs == 'true'
+        if: runner.os == 'Windows' && matrix.target.docs == true
         uses: actions/upload-artifact@v2
         with:
           name: 'docs-${{ steps.source.outputs.version }}.zip'
