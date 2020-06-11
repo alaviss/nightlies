@@ -265,8 +265,8 @@ jobs:
             'Windows')
               7z x -so "${source[0]}" | 7z x -si -ttar -aoa
               ;;
-            'macOS')
-              bsdtar xf "${source[0]}"
+            *)
+              tar xJf "${source[0]}"
               ;;
           esac
 
