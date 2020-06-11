@@ -248,7 +248,7 @@ jobs:
 
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
           ldflags=(-static)
-          nimflags=("$(printf "--passL:%s" "${ldflags[@]}")")
+          nimflags=("$(printf -- "--passL:%s" "${ldflags[@]}")")
           echo "::set-env name=LDFLAGS::${ldflags[@]}"
           echo "::set-env name=NIMFLAGS::${nimflags[@]}"
 
