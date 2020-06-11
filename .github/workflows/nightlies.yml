@@ -249,6 +249,10 @@ jobs:
         shell: bash
         run: echo '::add-path::${{ github.workspace }}/nim-${{ steps.source.outputs.version }}/bin'
 
+      - name: Get system information
+        shell: bash
+        run: gcc -dumpmachine
+
       - name: Build 1-stage csources compiler
         shell: bash
         run: |
