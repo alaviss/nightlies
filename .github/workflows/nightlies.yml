@@ -251,7 +251,12 @@ jobs:
 
       - name: Get system information
         shell: bash
-        run: gcc -dumpmachine
+        run: |
+          if [[ '${{ runner.os }}' == 'macOS' ]]; then
+            clang -dumpmachine
+          else
+            gcc -dumpmachine
+          fi
 
       - name: Build 1-stage csources compiler
         shell: bash
