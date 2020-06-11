@@ -239,13 +239,16 @@ jobs:
           # Import GPG key
           curl -L https://zv.io/BE4BF7E6811C5BA41345C11EB1D0B4566FBBDB40.asc | gpg --import
 
-          musl_toolchain='${{ matrix.target.triple }}'-native
+          musl_toolchain='${{ matrix.target.triple }}'-cross
           curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz"
           curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz.sig"
 
           gpg --quiet --verify "$musl_toolchain.tgz.sig"
           tar xzf "$musl_toolchain.tgz"
 
+          cd "$musl_toolchain"/bin
+          ln -s '${{ matrix.target.triple }}'-gcc gcc
+          ln -s '${{ matrix.target.triple }}'-g++ g++
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
 
       - name: Download generated source package
@@ -297,10 +300,13 @@ jobs:
             'macOS')
               nproc=$(sysctl -n hw.ncpu)
               ;;
-            *)
-              nproc=1
+            'Linux')
+              nproc=$(nproc)
               ;;
           esac
+          if [[ $nproc -le 0 ]]; then
+            nproc=1
+          fi
 
           make -j$nproc CC=gcc ucpu='${{ matrix.target.cpu }}'
 
