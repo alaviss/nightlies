@@ -161,6 +161,12 @@ jobs:
       matrix:
         version: ${{ fromJson(needs.setup.outputs.versions) }}
         target:
+          - os: linux
+            cpu: amd64
+            triple: x86_64-linux-musl
+          - os: linux
+            cpu: i386
+            triple: i686-linux-musl
           - os: macosx
             cpu: amd64
           - os: windows
@@ -220,6 +226,24 @@ jobs:
           echo '::add-path::${{ github.workspace }}/external/'"mingw$arch"'/bin'
           echo '::add-path::${{ github.workspace }}/external/dlls'
           echo "::set-env name=arch::$arch"
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p external
+          cd external
+          # Import GPG key
+          curl -L https://zv.io/BE4BF7E6811C5BA41345C11EB1D0B4566FBBDB40.asc | gpg --import
+
+          musl_toolchain='${{ matrix.target.triple }}'-native
+          curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz"
+          curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz.sig"
+
+          gpg --quiet --verify "$musl_toolchain.tgz.sig"
+          bsdtar xf "$musl_toolchain.tgz"
+
+          echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
 
       - name: Download generated source package
         uses: actions/download-artifact@v2
