@@ -248,9 +248,9 @@ jobs:
 
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
           ldflags=(-static)
-          nimflags=(--passL:"${ldflags[@]@Q}")
-          echo "::set-env name=LDFLAGS::${ldflags[@]@Q}"
-          echo "::set-env name=NIMFLAGS::${nimflags[@]@Q}"
+          nimflags=("$(printf "--passL:%s" "${ldflags[@]}")")
+          echo "::set-env name=LDFLAGS::${ldflags[@]}"
+          echo "::set-env name=NIMFLAGS::${nimflags[@]}"
 
       - name: Download generated source package
         uses: actions/download-artifact@v2
