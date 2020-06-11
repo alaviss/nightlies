@@ -244,7 +244,7 @@ jobs:
           curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz.sig"
 
           gpg --quiet --verify "$musl_toolchain.tgz.sig"
-          bsdtar xf "$musl_toolchain.tgz"
+          tar xzf "$musl_toolchain.tgz"
 
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
 
