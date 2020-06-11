@@ -356,7 +356,7 @@ jobs:
             -path '*/compiler/nim?' | xargs rm -rf
 
           release=$nim-'${{ matrix.target.os }}_${{ matrix.target.cpu }}'
-          bsdtar cf "$release.tar" "$nim"
+          tar cf "$release.tar" "$nim"
           xz -9e "$release.tar"
 
           echo "::set-env name=artifact::$release.tar.xz"
