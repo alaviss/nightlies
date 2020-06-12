@@ -141,7 +141,7 @@ jobs:
         shell: bash
         run: |
           cd nim
-          ./koch csources -d:release
+          ./koch csources -d:danger
           ./koch xz
 
           mkdir -p output
@@ -264,8 +264,7 @@ jobs:
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
 
           case '${{ matrix.target.arch }}' in
-            i386)
-            amd64)
+            i386 | amd64)
               ;;
             *)
               docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -287,7 +286,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p external
+          mkdir external
           cd external
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain"
