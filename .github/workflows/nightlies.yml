@@ -238,6 +238,8 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p external
           cd external
