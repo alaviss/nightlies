@@ -257,7 +257,7 @@ jobs:
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
 
-          ldflags=(-static -Wl,--as-needed -lcrypto -lssl -lpcre -lsqlite3)
+          ldflags=(-static -Wl,--as-needed -lssl -lcrypto -lpcre -lsqlite3)
           nimflags=(
             $(printf -- "--passL:%s " "${ldflags[@]}")
             --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
