@@ -253,7 +253,7 @@ jobs:
 
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
 
-          xargs < '../nightlies/buildreq.txt' | '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
+          xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
 
           ldflags=(-static -Wl,--as-needed -lcrypto -lssl -lpcre -lsqlite3)
           nimflags=(
