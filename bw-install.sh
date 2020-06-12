@@ -53,13 +53,17 @@ getAsset() {
   version=${1##*-}
 
   queryLatest='
-query($repo: String!, $owner: String = "JuliaBinaryWrappers") {
+query($repo: String!, $owner: String = "JuliaBinaryWrappers", $endCursor: String) {
   repository(name: $repo, owner: $owner) {
     releases(last: 1) {
       nodes {
-        releaseAssets(last: 10) {
+        releaseAssets(first: 10, after: $endCursor) {
           nodes {
             ...assetFields
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
           }
         }
       }
@@ -70,12 +74,16 @@ query($repo: String!, $owner: String = "JuliaBinaryWrappers") {
   getAssetsLatest='.data | .repository | .releases | .nodes[0] | .releaseAssets | .nodes[]'
 
   queryExact='
-query($tag: String!, $repo: String!, $owner: String = "JuliaBinaryWrappers") {
+query($tag: String!, $repo: String!, $owner: String = "JuliaBinaryWrappers", $endCursor: String) {
   repository(name: $repo, owner: $owner) {
     release(tagName: $tag) {
-      releaseAssets(last: 10) {
+      releaseAssets(first: 10, after: $endCursor) {
         nodes {
           ...assetFields
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
@@ -102,7 +110,7 @@ fragment assetFields on ReleaseAsset {
     getAssets=$getAssetsExact
   fi
 
-  resp=$(hub api graphql "${hubParams[@]}") || exit 1
+  resp=$(hub api --paginate graphql "${hubParams[@]}") || exit 1
 
   if [[ $(jq 'has("errors")' <<< "$resp") == true ]]; then
     jq -r '.errors[] | .message' <<< "$resp" >&2
@@ -113,8 +121,8 @@ fragment assetFields on ReleaseAsset {
     triple=$(detectTriple) || return 1
   fi
 
-  jq -r --arg triple "$triple" \
-    '[ '"$getAssets"' | select(.name | contains($triple)) ]' <<< "$resp"
+  jq -sr --arg triple "$triple" \
+    '[ .[] | '"$getAssets"' | select(.name | contains($triple)) ]' <<< "$resp"
 }
 
 output=$PWD
@@ -152,12 +160,19 @@ cd "$output" || exit 1
 
 for pkg in "$@"; do
   asset=$(getAsset "$pkg") || exit 1
-  if [[ $(jq 'length' <<< "$asset") -gt 1 ]]; then
-    echo "Ambiguous triple '$triple'" >&2
-    exit 1
-  fi
+  case "$(jq 'length' <<< "$asset")" in
+    1)
+      ;;
+    0)
+      echo "Package $pkg not found for triple: $triple"
+      exit 1
+      ;;
+    *)
+      echo "Ambiguous triple '$triple'" >&2
+      exit 1
+      ;;
+  esac
   asset=$(jq -r '.[0]' <<< "$asset")
-
 
   url=$(jq -r '.downloadUrl' <<< "$asset") || exit 1
   name=$(jq -r '.name' <<< "$asset") || exit 1
