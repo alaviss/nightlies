@@ -191,7 +191,8 @@ jobs:
     steps:
       - name: Checkout build scripts
         uses: actions/checkout@v2
-        path: nightlies
+        with:
+          path: nightlies
 
       - name: Cache dependencies (Windows)
         if: runner.os == 'Windows'
