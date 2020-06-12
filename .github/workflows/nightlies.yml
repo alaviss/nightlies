@@ -167,6 +167,12 @@ jobs:
           - os: linux
             cpu: i386
             triple: i686-linux-musl
+          - os: linux
+            cpu: arm64
+            triple: aarch64-linux-musl
+          - os: linux
+            cpu: arm
+            triple: armv7l-linux-musleabihf
           - os: macosx
             cpu: amd64
           - os: windows
@@ -257,6 +263,15 @@ jobs:
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
 
+          case '${{ matrix.target.arch }}' in
+            i386)
+            amd64)
+              ;;
+            *)
+              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+              ;;
+          esac
+
           ldflags=(-static -Wl,--as-needed -lssl -lcrypto -lpcre -lsqlite3)
           nimflags=(
             $(printf -- "--passL:%s " "${ldflags[@]}")
@@ -293,15 +308,6 @@ jobs:
       - name: Setup environment
         shell: bash
         run: echo '::add-path::${{ github.workspace }}/nim-${{ steps.source.outputs.version }}/bin'
-
-      - name: Get system information
-        shell: bash
-        run: |
-          if [[ '${{ runner.os }}' == 'macOS' ]]; then
-            clang -dumpmachine
-          else
-            gcc -dumpmachine
-          fi
 
       - name: Build 1-stage csources compiler
         shell: bash
