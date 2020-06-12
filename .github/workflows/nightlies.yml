@@ -168,10 +168,10 @@ jobs:
             cpu: i386
             triple: i686-linux-musl
           - os: linux
-            cpu: arm64
+            cpu: aarch64
             triple: aarch64-linux-musl
           - os: linux
-            cpu: arm
+            cpu: armv7l
             triple: armv7l-linux-musleabihf
           - os: macosx
             cpu: amd64
@@ -286,7 +286,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir external
+          mkdir -- external
           cd external
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain"
