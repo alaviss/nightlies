@@ -189,6 +189,10 @@ jobs:
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Checkout build scripts
+        uses: actions/checkout@v2
+        path: nightlies
+
       - name: Cache dependencies (Windows)
         if: runner.os == 'Windows'
         uses: actions/cache@v1
@@ -247,8 +251,15 @@ jobs:
           tar xzf "$musl_toolchain.tgz"
 
           echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
-          ldflags=(-static)
-          nimflags=("$(printf -- "--passL:%s" "${ldflags[@]}")")
+
+          xargs < '../nightlies/buildreq.txt' | '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
+
+          ldflags=(-static -Wl,--as-needed -lcrypto -lssl -lpcre -lsqlite3)
+          nimflags=(
+            "$(printf -- "--passL:%s" "${ldflags[@]}")"
+            --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
+            --dynlibOverrideAll
+          )
           echo "::set-env name=LDFLAGS::${ldflags[@]}"
           echo "::set-env name=NIMFLAGS::${nimflags[@]}"
 
