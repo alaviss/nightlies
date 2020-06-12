@@ -281,6 +281,26 @@ jobs:
           echo "::set-env name=LDFLAGS::${ldflags[@]}"
           echo "::set-env name=NIMFLAGS::${nimflags[@]}"
 
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p external
+          cd external
+
+          xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain"
+
+          ldflags=(-Wl,-Bstatic '-Wl,-L${{ github.workspace }}/external/lib' -Wl,--as-needed -lssl -lcrypto -lpcre -lsqlite3 -Wl,-Bdynamic)
+          nimflags=(
+            $(printf -- "--passL:%s " "${ldflags[@]}")
+            --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
+            --dynlibOverrideAll
+          )
+          echo "::set-env name=LDFLAGS::${ldflags[@]}"
+          echo "::set-env name=NIMFLAGS::${nimflags[@]}"
+
       - name: Download generated source package
         uses: actions/download-artifact@v2
         with:
