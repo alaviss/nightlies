@@ -57,7 +57,7 @@ query($repo: String!, $owner: String = "JuliaBinaryWrappers", $endCursor: String
   repository(name: $repo, owner: $owner) {
     releases(last: 1) {
       nodes {
-        releaseAssets(first: 10, after: $endCursor) {
+        releaseAssets(first: 15, after: $endCursor) {
           nodes {
             ...assetFields
           }
@@ -77,7 +77,7 @@ query($repo: String!, $owner: String = "JuliaBinaryWrappers", $endCursor: String
 query($tag: String!, $repo: String!, $owner: String = "JuliaBinaryWrappers", $endCursor: String) {
   repository(name: $repo, owner: $owner) {
     release(tagName: $tag) {
-      releaseAssets(first: 10, after: $endCursor) {
+      releaseAssets(first: 15, after: $endCursor) {
         nodes {
           ...assetFields
         }
