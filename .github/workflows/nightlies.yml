@@ -259,7 +259,7 @@ jobs:
 
           ldflags=(-static -Wl,--as-needed -lcrypto -lssl -lpcre -lsqlite3)
           nimflags=(
-            "$(printf -- "--passL:%s" "${ldflags[@]}")"
+            $(printf -- "--passL:%s " "${ldflags[@]}")
             --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
             --dynlibOverrideAll
           )
