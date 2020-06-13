@@ -107,7 +107,7 @@ jobs:
             else
               echo "::group::Stored settings for branch $branch @ $commit found."
             fi
-            jq --arg branch "$branch" '.[] | select(.branch == $branch)' | jq -s 'add' - "settings/$branch.json" | tee settings.json
+            jq --arg branch "$branch" '.[] | select(.branch == $branch)' versions.json | jq -s 'add' - "settings/$branch.json" | tee settings.json
             echo "::endgroup::"
           done
 
