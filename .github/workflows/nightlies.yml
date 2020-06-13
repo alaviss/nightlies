@@ -67,7 +67,7 @@ jobs:
       matrix:
         version: ${{ fromJson(needs.setup.outputs.versions) }}
     name: 'source (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest # Mac VMs have more cores (4) compared to other VMs (2)
     env: ${{ fromJson(needs.setup.outputs.environment) }}
     steps:
       - name: Restore Nim from cache
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: nim/output
-          key: 'source-${{ matrix.version.commit }}-test1'
+          key: 'source-${{ matrix.version.commit }}-test2'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
