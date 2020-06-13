@@ -111,6 +111,7 @@ jobs:
             echo "::endgroup::"
           done
 
+          jq -sc '.' settings.json
           echo "::set-output name=settings::$(jq -sc '.' settings.json)"
 
   sourceArchive:
