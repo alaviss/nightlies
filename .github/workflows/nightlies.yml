@@ -52,6 +52,8 @@ jobs:
       - name: Generate build settings
         id: settings
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           declare -A refs
 
@@ -205,6 +207,8 @@ jobs:
       - name: Publish release
         if: steps.nim-cache.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nim
 
@@ -224,6 +228,8 @@ jobs:
       - name: Abandon release
         if: failure() || cancelled()
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ $(hub release show -f '%S' '${{ matrix.release }}') == draft ]]; then
             echo 'Dropping release ${{ matrix.release }}'
@@ -484,6 +490,8 @@ jobs:
 
       - name: Upload generated binaries
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
           hub release edit -a '../${{ env.artifact }}' '${{ matrix.setting.release }}'
@@ -491,6 +499,8 @@ jobs:
       - name: Upload generated docs
         if: runner.os == 'Windows' && matrix.target.docs == true
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
           hub release edit -a '../docs-${{ steps.source.outputs.version }}.zip' '${{ matrix.setting.release }}'
