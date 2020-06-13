@@ -47,8 +47,7 @@ jobs:
         with:
           path: settings
           key: build-${{ hashFiles('versions.json') }}
-          restore-key:
-            build-
+          restore-keys: build-
 
       - name: Generate build settings
         id: settings
