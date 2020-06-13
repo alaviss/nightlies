@@ -291,7 +291,7 @@ jobs:
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh'
 
-          ldflags=($(printf -- "$PWD/external/lib/%s" libssl.a libcrypto.a libpcre.a libsqlite3.a))
+          ldflags=($(printf -- "$PWD/external/lib/%s " libssl.a libcrypto.a libpcre.a libsqlite3.a))
           nimflags=(
             $(printf -- "--passL:%s " "${ldflags[@]}")
             --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
