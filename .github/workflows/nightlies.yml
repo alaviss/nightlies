@@ -286,10 +286,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -- external
+          mkdir '${{ github.workspace }}/external'
           cd external
 
-          xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain"
+          xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh'
 
           ldflags=(-Wl,-Bstatic '-Wl,-L${{ github.workspace }}/external/lib' -Wl,--as-needed -lssl -lcrypto -lpcre -lsqlite3 -Wl,-Bdynamic)
           nimflags=(
