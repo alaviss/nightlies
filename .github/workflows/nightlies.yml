@@ -16,11 +16,14 @@ jobs:
     name: 'build settings'
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.matrix.outputs.versions }}
-      environment: ${{ steps.env.outputs.environment }}
+      settings: ${{ steps.settings.outputs.settings }}
     steps:
+      - name: Checkout nightlies
+        uses: actions/checkout@v2
+        with:
+          path: nightlies
+
       - name: Generate version matrix
-        id: matrix
         shell: bash
         run: |
           # Tracked branches
@@ -30,46 +33,99 @@ jobs:
             git ls-remote "https://github.com/$1" "$2" | cut -f 1
           }
 
-          (
+          {
             for branch in "${branches[@]}"; do
               jq --null-input \
                  --arg branch "$branch" \
                  --arg commit "$(getHash nim-lang/Nim "$branch")" \
                  '{ branch: $branch, commit: $commit }'
             done
-          ) | jq -s '.' | tee versions.json
+          } | jq -s '.' | tee versions.json
 
-          echo "::set-output name=versions::$(jq -c '.' versions.json)"
+      - name: Restore build settings
+        uses: actions/cache@v2
+        with:
+          path: settings
+          key: build-${{ hashFiles('versions.json') }}
+          restore-key:
+            build-
 
-      - name: Generate environment variables
-        id: env
+      - name: Generate build settings
+        id: settings
         shell: bash
         run: |
+          declare -A refs
+
+          while IFS='=' read -r branch commit; do
+            refs[$branch]=$commit
+          done <<< "$(jq -r '.[] | .branch + "=" + .commit' versions.json)"
+
+          mkdir -p settings
+          # Delete older branch settings (if they were restored)
+          find settings -mindepth 1 -maxdepth 1 \( $(printf "! -name %q " "${!refs[@]}.json") \) -delete
+
           declare -A environment=(
-            ["SOURCE_CODE_EPOCH"]="$(date -u +%s)"
+            [SOURCE_CODE_EPOCH]=$(date -u +%s)
           )
 
-          (
-            for var in "${!environment[@]}"; do
-              jq --null-input \
-                 --arg variable "$var" \
-                 --arg value "${environment[$var]}" \
-                 '{ ($variable): $value }'
-            done
-          ) | jq -s 'reduce .[] as $item (null; . + $item)' | tee variables.json
+          for branch in "${!refs[@]}"; do
+            savedCommit=
+            commit=${refs[$branch]}
+            if [[ -f "settings/$branch.json" ]]; then
+              savedCommit=$(jq '.commit' "$branch.json")
+            fi
+            if [[ $savedCommit != "$commit" ]]; then
+              echo "::group::Generating build settings for branch $branch"
+              {
+                {
+                  for var in "${!environment[@]}"; do
+                    jq --null-input \
+                       --arg variable "$var" \
+                       --arg value "${environment[$var]}" \
+                       '{ ($variable): $value }'
+                  done
+                } | jq -s '{ environment: (reduce .[] as $item (null; . + $item)) }'
 
-          echo "::set-output name=environment::$(jq -c '.' variables.json)"
+                tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%T)-$branch
+                cat << EOF | hub -C nightlies release create -F - -d "$tag" >/dev/null
+          Nightly build on $(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" "+%F %T") for branch $branch
+
+          Commit: https://github.com/nim-lang/Nim/commit/$commit
+
+          Generated release binaries will be uploaded as they're made available.
+
+          Changes made since the [last tagged commit](@TAGLINK@) (@TAGNAME@).
+          \`\`\`
+          @SHORTLOG@
+          \`\`\`
+          EOF
+
+                jq --null-input --arg tag "$tag" '{ release: $tag }'
+
+              } | jq -s --arg commit "$commit" 'reduce .[] as $item ({ commit: $commit }; . + $item)' > "settings/$branch.json"
+            else
+              echo "::group::Stored settings for branch $branch @ $commit found."
+            fi
+            jq --arg branch "$branch" '.[] | select(.branch == $branch)' | jq -s 'add' - "settings/$branch.json" | tee settings.json
+            echo "::endgroup::"
+          done
+
+          echo "::set-output name=settings::$(jq -c '.' settings.json)"
 
   sourceArchive:
     needs: setup
 
     strategy:
-      matrix:
-        version: ${{ fromJson(needs.setup.outputs.versions) }}
-    name: 'source (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+      matrix: ${{ fromJson(needs.setup.outputs.settings) }}
+    name: 'source (${{ matrix.branch }}, ${{ matrix.commit }})'
     runs-on: macos-latest # Mac VMs have more cores (4) compared to other VMs (2)
-    env: ${{ fromJson(needs.setup.outputs.environment) }}
+    env: ${{ fromJson(matrix.environment) }}
     steps:
+      - name: Checkout nightlies
+        uses: actions/checkout@v2
+        with:
+          path: nightlies
+
       - name: Restore Nim from cache
         id: nim-cache
         uses: actions/cache@v1
@@ -101,7 +157,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: nim-lang/Nim
-          ref: ${{ matrix.version.commit }}
+          ref: ${{ matrix.commit }}
           path: nim
 
       - name: Checkout csources
@@ -147,10 +203,40 @@ jobs:
           mkdir -p output
           cp build/nim-*.tar.xz output
 
-      - name: Upload source archive
+      - name: Publish release
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          cd nim
+
+          export TAGNAME=$(git describe --tags)
+          export TAGLINK=https://github.com/nim-lang/Nim/releases/tag/$TAGNAME
+          export SHORTLOG=$(git shortlog -- "$TAGNAME..HEAD")
+
+          cd ../nightlies
+          hub release show -f '%b' '${{ matrix.release }}' |
+          awk '{
+            gsub("@TAGNAME@", ENVIRON["TAGNAME"])
+            gsub("@TAGLINK@", ENVIRON["TAGLINK"])
+            gsub("@SHORTLOG@", ENVIRON["SHORTLOG"])
+            print
+          }' | hub release edit -F - --draft=false -a ../nim/output/*.tar.xz '${{ matrix.release }}'
+
+      - name: Abandon release
+        if: failure() || cancelled()
+        shell: bash
+        run: |
+          if [[ $(hub release show -f '%S' '${{ matrix.release }}') == draft ]]; then
+            echo 'Dropping release ${{ matrix.release }}'
+            hub release delete '${{ matrix.release }}'
+          else
+            echo 'Release published, not abandoning'
+          fi
+
+      - name: Upload source archive to artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: 'nim-${{ matrix.version.commit }}'
+          name: 'nim-${{ matrix.commit }}'
           path: nim/output/*
 
   build:
@@ -159,7 +245,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ${{ fromJson(needs.setup.outputs.versions) }}
+        setting: ${{ fromJson(needs.setup.outputs.settings) }}
         target:
           - os: linux
             cpu: amd64
@@ -191,8 +277,8 @@ jobs:
               os: windows
             builder: windows-2019
 
-    env: ${{ fromJson(needs.setup.outputs.environment) }}
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.version.branch }}, ${{ matrix.version.commit }})'
+    env: ${{ fromJson(matrix.setting.environment) }}
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Checkout build scripts
@@ -398,14 +484,14 @@ jobs:
           echo "::set-env name=artifact::$release.tar.xz"
 
       - name: Upload generated binaries
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ env.artifact }}
-          path: ${{ env.artifact }}
+        shell: bash
+        run: |
+          cd nightlies
+          hub release edit -a '../${{ env.artifact }}' '${{ matrix.setting.release }}'
 
       - name: Upload generated docs
         if: runner.os == 'Windows' && matrix.target.docs == true
-        uses: actions/upload-artifact@v2
-        with:
-          name: 'docs-${{ steps.source.outputs.version }}.zip'
-          path: 'docs-${{ steps.source.outputs.version }}.zip'
+        shell: bash
+        run: |
+          cd nightlies
+          hub release edit -a '../docs-${{ steps.source.outputs.version }}.zip' '${{ matrix.setting.release }}'
