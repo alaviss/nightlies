@@ -111,17 +111,17 @@ jobs:
             echo "::endgroup::"
           done
 
-          jq -sc '.' settings.json
           echo "::set-output name=settings::$(jq -sc '.' settings.json)"
 
   sourceArchive:
     needs: setup
 
     strategy:
-      matrix: ${{ fromJson(needs.setup.outputs.settings) }}
-    name: 'source (${{ matrix.branch }}, ${{ matrix.commit }})'
+      matrix:
+        setting: ${{ fromJson(needs.setup.outputs.settings) }}
+    name: 'source (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: macos-latest # Mac VMs have more cores (4) compared to other VMs (2)
-    env: ${{ fromJson(matrix.environment) }}
+    env: ${{ fromJson(matrix.setting.environment) }}
     steps:
       - name: Checkout nightlies
         uses: actions/checkout@v2
@@ -133,7 +133,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: nim/output
-          key: 'source-${{ matrix.version.commit }}-test2'
+          key: 'source-${{ matrix.setting.version.commit }}-test2'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -159,7 +159,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: nim-lang/Nim
-          ref: ${{ matrix.commit }}
+          ref: ${{ matrix.setting.commit }}
           path: nim
 
       - name: Checkout csources
@@ -218,13 +218,13 @@ jobs:
           export SHORTLOG=$(git shortlog -- "$TAGNAME..HEAD")
 
           cd ../nightlies
-          hub release show -f '%b' '${{ matrix.release }}' |
+          hub release show -f '%b' '${{ matrix.setting.release }}' |
           awk '{
             gsub("@TAGNAME@", ENVIRON["TAGNAME"])
             gsub("@TAGLINK@", ENVIRON["TAGLINK"])
             gsub("@SHORTLOG@", ENVIRON["SHORTLOG"])
             print
-          }' | hub release edit -F - --draft=false -a ../nim/output/*.tar.xz '${{ matrix.release }}'
+          }' | hub release edit -F - --draft=false -a ../nim/output/*.tar.xz '${{ matrix.setting.release }}'
 
       - name: Abandon release
         if: failure() || cancelled()
@@ -232,9 +232,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ $(hub release show -f '%S' '${{ matrix.release }}') == draft ]]; then
-            echo 'Dropping release ${{ matrix.release }}'
-            hub release delete '${{ matrix.release }}'
+          if [[ $(hub release show -f '%S' '${{ matrix.setting.release }}') == draft ]]; then
+            echo 'Dropping release ${{ matrix.setting.release }}'
+            hub release delete '${{ matrix.setting.release }}'
           else
             echo 'Release published, not abandoning'
           fi
@@ -242,7 +242,7 @@ jobs:
       - name: Upload source archive to artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: 'nim-${{ matrix.commit }}'
+          name: 'nim-${{ matrix.setting.commit }}'
           path: nim/output/*
 
   build:
