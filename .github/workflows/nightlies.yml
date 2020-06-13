@@ -291,7 +291,7 @@ jobs:
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh'
 
-          ldflags=(-Wl,-static '-Wl,-L${{ github.workspace }}/external/lib' -lssl -lcrypto -lpcre -lsqlite3 -Wl,-dynamic)
+          ldflags=('-L${{ github.workspace }}/external/lib' -l:libssl.a -l:libcrypto.a -l:libpcre.a -l:libsqlite3.a)
           nimflags=(
             $(printf -- "--passL:%s " "${ldflags[@]}")
             --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
