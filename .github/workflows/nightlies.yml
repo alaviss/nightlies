@@ -73,7 +73,7 @@ jobs:
             savedCommit=
             commit=${refs[$branch]}
             if [[ -f "settings/$branch.json" ]]; then
-              savedCommit=$(jq '.commit' "$branch.json")
+              savedCommit=$(jq '.commit' "settings/$branch.json")
             fi
             if [[ $savedCommit != "$commit" ]]; then
               echo "::group::Generating build settings for branch $branch"
@@ -87,7 +87,7 @@ jobs:
                   done
                 } | jq -s '{ environment: (reduce .[] as $item (null; . + $item)) }'
 
-                tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%T)-$branch
+                tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%H%M%S)-$branch-$commit
                 cat << EOF | hub -C nightlies release create -F - -d "$tag" >/dev/null
           Nightly build on $(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" "+%F %T") for branch $branch
 
@@ -107,11 +107,11 @@ jobs:
             else
               echo "::group::Stored settings for branch $branch @ $commit found."
             fi
-            jq --arg branch "$branch" '.[] | select(.branch == $branch)' versions.json | jq -s 'add' - "settings/$branch.json" | tee settings.json
+            jq --arg branch "$branch" '.[] | select(.branch == $branch)' versions.json | jq -s 'add' - "settings/$branch.json" | tee -a settings.json
             echo "::endgroup::"
           done
 
-          echo "::set-output name=settings::$(jq -c '.' settings.json)"
+          echo "::set-output name=settings::$(jq -sc '.' settings.json)"
 
   sourceArchive:
     needs: setup
