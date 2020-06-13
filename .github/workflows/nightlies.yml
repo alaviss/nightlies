@@ -121,7 +121,7 @@ jobs:
         setting: ${{ fromJson(needs.setup.outputs.settings) }}
     name: 'source (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: macos-latest # Mac VMs have more cores (4) compared to other VMs (2)
-    env: ${{ fromJson(matrix.setting.environment) }}
+    env: ${{ matrix.setting.environment }}
     steps:
       - name: Checkout nightlies
         uses: actions/checkout@v2
@@ -283,7 +283,7 @@ jobs:
               os: windows
             builder: windows-2019
 
-    env: ${{ fromJson(matrix.setting.environment) }}
+    env: ${{ matrix.setting.environment }}
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
