@@ -286,12 +286,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir '${{ github.workspace }}/external'
+          mkdir ./external
           cd external
 
           xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh'
 
-          ldflags=('-L${{ github.workspace }}/external/lib' -l:libssl.a -l:libcrypto.a -l:libpcre.a -l:libsqlite3.a)
+          ldflags=($(printf -- "$PWD/external/lib/%s" libssl.a libcrypto.a libpcre.a libsqlite3.a))
           nimflags=(
             $(printf -- "--passL:%s " "${ldflags[@]}")
             --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
