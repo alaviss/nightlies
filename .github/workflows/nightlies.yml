@@ -46,8 +46,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: settings
-          key: build-${{ hashFiles('versions.json') }}
-          restore-keys: build-
+          key: build-test-${{ hashFiles('versions.json') }}
+          restore-keys: build-test-
 
       - name: Generate build settings
         id: settings
@@ -72,7 +72,7 @@ jobs:
           for branch in "${!refs[@]}"; do
             savedCommit=
             commit=${refs[$branch]}
-            if [[ -f "settings/$branch.json" ]]; then
+            if [[ -e "settings/$branch.json" ]]; then
               savedCommit=$(jq '.commit' "settings/$branch.json")
             fi
             if [[ $savedCommit != "$commit" ]]; then
@@ -201,7 +201,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git -C nim fetch --tags
-          tag=$(git -C nim describe --tags)
+          tag=$(git -C nim describe --tags $(git -C nim rev-list --tags --max-count=1))
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
           cat << EOF | hub -C nightlies release create -a ../nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
