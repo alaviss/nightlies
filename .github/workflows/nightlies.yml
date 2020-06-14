@@ -88,18 +88,7 @@ jobs:
                 } | jq -s '{ environment: (reduce .[] as $item (null; . + $item)) }'
 
                 tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%H%M%S)-$branch-$commit
-                cat << EOF | hub -C nightlies release create -F - -d "$tag" >/dev/null
-          Nightly build on $(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" "+%F %T") for branch $branch
 
-          Commit: https://github.com/nim-lang/Nim/commit/$commit
-
-          Generated release binaries will be uploaded as they're made available.
-
-          Changes made since the [last tagged commit](@TAGLINK@) (@TAGNAME@).
-          \`\`\`
-          @SHORTLOG@
-          \`\`\`
-          EOF
 
                 jq --null-input --arg tag "$tag" '{ release: $tag }'
 
@@ -133,7 +122,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: nim/output
-          key: 'source-${{ matrix.setting.version.commit }}-test2'
+          key: 'source-${{ matrix.setting.version.commit }}-test3'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -211,33 +200,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd nim
+          git -C nim fetch --tags
+          tag=$(git -C nim describe --tags)
+          link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
-          export TAGNAME=$(git describe --tags)
-          export TAGLINK=https://github.com/nim-lang/Nim/releases/tag/$TAGNAME
-          export SHORTLOG=$(git shortlog -- "$TAGNAME..HEAD")
+          cat << EOF | hub -C nightlies release create -a ../nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
+          Nightly build on $(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" "+%F %T") for branch $branch
 
-          cd ../nightlies
-          hub release show -f '%b' '${{ matrix.setting.release }}' |
-          awk '{
-            gsub("@TAGNAME@", ENVIRON["TAGNAME"])
-            gsub("@TAGLINK@", ENVIRON["TAGLINK"])
-            gsub("@SHORTLOG@", ENVIRON["SHORTLOG"])
-            print
-          }' | hub release edit -F - --draft=false -a ../nim/output/*.tar.xz '${{ matrix.setting.release }}'
+          Commit: https://github.com/nim-lang/Nim/commit/$commit
 
-      - name: Abandon release
-        if: failure() || cancelled()
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [[ $(hub release show -f '%S' '${{ matrix.setting.release }}') == draft ]]; then
-            echo 'Dropping release ${{ matrix.setting.release }}'
-            hub release delete '${{ matrix.setting.release }}'
-          else
-            echo 'Release published, not abandoning'
-          fi
+          Generated release binaries will be uploaded as they're made available.
+
+          Changes made since the [last tagged commit]($link) ($tag).
+          \`\`\`
+          $(git -C nim shortlog "$tag..HEAD")
+          \`\`\`
+          EOF
 
       - name: Upload source archive to artifacts
         uses: actions/upload-artifact@v2
@@ -495,7 +473,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
-          hub release edit -a '../${{ env.artifact }}' '${{ matrix.setting.release }}'
+          hub release edit -m '' -a '../${{ env.artifact }}' '${{ matrix.setting.release }}'
 
       - name: Upload generated docs
         if: runner.os == 'Windows' && matrix.target.docs == true
@@ -504,4 +482,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
-          hub release edit -a '../docs-${{ steps.source.outputs.version }}.zip' '${{ matrix.setting.release }}'
+          hub release edit -m '' -a '../docs-${{ steps.source.outputs.version }}.zip' '${{ matrix.setting.release }}'
