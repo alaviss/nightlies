@@ -122,7 +122,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: nim/output
-          key: 'source-${{ matrix.setting.version.commit }}-test3'
+          key: 'source-${{ matrix.setting.version.commit }}-test4'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -150,6 +150,7 @@ jobs:
           repository: nim-lang/Nim
           ref: ${{ matrix.setting.commit }}
           path: nim
+          fetch-depth: 0
 
       - name: Checkout csources
         if: >
@@ -200,18 +201,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git -C nim fetch --tags
           tag=$(git -C nim describe --tags $(git -C nim rev-list --tags --max-count=1))
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
-          cat << EOF | hub -C nightlies release create -a nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
+          cat << EOF | hub -C nightlies release create -a nim/output/*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
           Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch $branch
 
           Commit: https://github.com/nim-lang/Nim/commit/$commit
 
           Generated release binaries will be uploaded as they're made available.
 
-          Changes made since the last tagged commit [(\`$tag\`)]($link):
+          Changes made since the last tagged commit ([\`$tag\`]($link)):
           \`\`\`
           $(git -C nim shortlog "$tag..HEAD")
           \`\`\`
