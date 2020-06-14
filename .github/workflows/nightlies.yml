@@ -205,7 +205,7 @@ jobs:
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
           cat << EOF | hub -C nightlies release create -a ../nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
-          Nightly build on $(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" "+%F %T") for branch $branch
+          Nightly build on $(gdate -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch $branch
 
           Commit: https://github.com/nim-lang/Nim/commit/$commit
 
