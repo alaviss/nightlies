@@ -109,7 +109,7 @@ jobs:
       matrix:
         setting: ${{ fromJson(needs.setup.outputs.settings) }}
     name: 'source (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
-    runs-on: macos-latest # Mac VMs have more cores (4) compared to other VMs (2)
+    runs-on: ubuntu-latest
     env: ${{ matrix.setting.environment }}
     steps:
       - name: Checkout nightlies
@@ -169,7 +169,7 @@ jobs:
         shell: bash
         run: |
           if [[ ! -e csources/bin/nim ]]; then
-            make -C csources -j $ncpu CC=gcc
+            make -C csources -j $(nproc) CC=gcc
           else
             echo 'Using prebuilt csources'
           fi
@@ -204,8 +204,8 @@ jobs:
           tag=$(git -C nim describe --tags $(git -C nim rev-list --tags --max-count=1))
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
-          cat << EOF | hub -C nightlies release create -a ../nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
-          Nightly build on $(gdate -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch $branch
+          cat << EOF | hub -C nightlies release create -a nim/output/*.tar.xz -F - -d '${{ matrix.setting.release }}' >/dev/null
+          Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch $branch
 
           Commit: https://github.com/nim-lang/Nim/commit/$commit
 
