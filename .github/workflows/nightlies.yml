@@ -211,7 +211,7 @@ jobs:
 
           Generated release binaries will be uploaded as they're made available.
 
-          Changes made since the [last tagged commit]($link) ($tag).
+          Changes made since the last tagged commit [(\`$tag\`)]($link):
           \`\`\`
           $(git -C nim shortlog "$tag..HEAD")
           \`\`\`
