@@ -63,7 +63,7 @@ jobs:
 
           mkdir -p settings
           # Delete older branch settings (if they were restored)
-          find settings -mindepth 1 -maxdepth 1 \( $(printf "! -name %q " "${!refs[@]}.json") \) -delete
+          find settings -mindepth 1 -maxdepth 1 $(printf "-not -name %q " "${!refs[@]}.json")
 
           declare -A environment=(
             [SOURCE_CODE_EPOCH]=$(date -u +%s)
