@@ -63,7 +63,7 @@ jobs:
 
           mkdir -p settings
           # Delete older branch settings (if they were restored)
-          find settings -mindepth 1 -maxdepth 1 $(printf -- "-not -name %q " "${!refs[@]}.json") -delete
+          find settings -mindepth 1 -maxdepth 1 $(printf -- "-not -name %q " "${!refs[@]}.json")
 
           declare -A environment=(
             [SOURCE_CODE_EPOCH]=$(date -u +%s)
@@ -72,10 +72,8 @@ jobs:
           for branch in "${!refs[@]}"; do
             savedCommit=
             commit=${refs[$branch]}
-            ls settings
             if [[ -e "settings/$branch.json" ]]; then
               savedCommit=$(jq -r '.commit' "settings/$branch.json")
-              echo "$commit" "$savedCommit"
             fi
             if [[ $savedCommit != "$commit" ]]; then
               echo "::group::Generating build settings for branch $branch"
