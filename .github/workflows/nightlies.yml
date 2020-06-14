@@ -73,7 +73,7 @@ jobs:
             savedCommit=
             commit=${refs[$branch]}
             if [[ -e "settings/$branch.json" ]]; then
-              savedCommit=$(jq '.commit' "settings/$branch.json")
+              savedCommit=$(jq -r '.commit' "settings/$branch.json")
             fi
             if [[ $savedCommit != "$commit" ]]; then
               echo "::group::Generating build settings for branch $branch"
