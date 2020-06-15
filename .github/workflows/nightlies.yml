@@ -121,7 +121,7 @@ jobs:
 
       - name: Restore Nim from cache
         id: nim-cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: nim/output/nim-*.tar.xz
           key: 'source-${{ matrix.setting.commit }}-test5'
