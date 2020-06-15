@@ -45,8 +45,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: settings
-          key: build-test4-${{ hashFiles('versions.json') }}
-          restore-keys: build-test4
+          key: build-test5-${{ hashFiles('versions.json') }}
+          restore-keys: build-test5
 
       - name: Generate build settings
         id: settings
@@ -107,6 +107,7 @@ jobs:
     needs: setup
 
     strategy:
+      fail-fast: false
       matrix:
         setting: ${{ fromJson(needs.setup.outputs.settings) }}
     name: 'source (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
