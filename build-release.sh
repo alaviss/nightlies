@@ -126,7 +126,7 @@ time {
 
 time {
   fold "Build compiler"
-  ./koch boot -d:release
+  ./koch boot -d:release --skipUserCfg:off
   endfold
 }
 
