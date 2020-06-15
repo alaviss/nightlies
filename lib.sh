@@ -6,7 +6,7 @@
 ##
 ## Pretty print error messages
 error() {
-  echo $'\e[31merror\e[m:' "${BASH_SOURCE[1]}(${BASH_LINENO[1]}) ${FUNCNAME[1]}: " "$@" >&2
+  echo $'\e[31merror\e[m:' "${BASH_SOURCE[1]}(${BASH_LINENO[1]}) ${FUNCNAME[1]}:" "$@" >&2
 }
 
 ## os

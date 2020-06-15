@@ -69,7 +69,7 @@ if [[ ! -d $output ]]; then
 
   case "$(os)" in
     windows)
-      arch=${triple##-*}
+      arch=$(arch_from_triple "$triple")
       case "$arch" in
         i?86)
           arch=32
