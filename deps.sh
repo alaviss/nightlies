@@ -36,7 +36,7 @@ EOF
 set -e
 set -o pipefail
 
-basedir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+basedir=$(cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
 # shellcheck source=lib.sh
 source "$basedir/lib.sh"
 
