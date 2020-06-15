@@ -84,9 +84,13 @@ export PATH=$PWD/bin${PATH:+:$PATH}
 
 cpu=$(arch_from_triple $($CC -dumpmachine))
 
-fold "Build 1-stage csources compiler"
-make "-j$()" ucpu="$cpu" CC="$CC"
-endfold
+TIMEFORMAT="Took %lR"
+
+time {
+  fold "Build 1-stage csources compiler"
+  make "-j$(ncpu)" ucpu="$cpu" CC="$CC"
+  endfold
+}
 
 buildtmp=$PWD/build
 
@@ -111,17 +115,23 @@ if [[ -e $deps/nim.cfg ]]; then
   cat "$deps/nim.cfg" >> "$buildtmp/nim/nim.cfg"
 fi
 
-fold "Build koch"
-nim c koch
-endfold
+time {
+  fold "Build koch"
+  nim c koch
+  endfold
+}
 
-fold "Build compiler"
-./koch boot -d:release
-endfold
+time {
+  fold "Build compiler"
+  ./koch boot -d:release
+  endfold
+}
 
-fold "Build tools"
-./koch tools -d:release
-endfold
+time {
+  fold "Build tools"
+  ./koch tools -d:release
+  endfold
+}
 
 eval $(cat << EOF | nim secret --hints:off 2>/dev/null
 echo "version=", NimVersion
@@ -134,65 +144,71 @@ EOF
 
 case "$os" in
   windows)
-    fold "Generate release"
-    nim c --outdir:. tools/winrelease
-    ./winrelease
+    time {
+      fold "Generate release"
+      nim c --outdir:. tools/winrelease
+      ./winrelease
 
-    case "$cpu" in
-      amd64)
-        suffix=_x64
-        ;;
-      i386)
-        suffix=_x32
-        ;;
-      *)
-        echo "unsupported cpu: '$cpu', using standard suffix: $suffix"
-        ;;
-    esac
+      case "$cpu" in
+        amd64)
+          suffix=_x64
+          ;;
+        i386)
+          suffix=_x32
+          ;;
+        *)
+          echo "unsupported cpu: '$cpu', using standard suffix: $suffix"
+          ;;
+      esac
 
-    cp -t "$output" "web/upload/download/nim-${version}$suffix.zip"
-    artifact=$output/nim-${version}$suffix.zip
+      cp -t "$output" "web/upload/download/nim-${version}$suffix.zip"
+      artifact=$output/nim-${version}$suffix.zip
 
-    echo "Generated release artifact at $artifact"
-    echo "$artifact" > "$output/nim.txt"
-    endfold
+      echo "Generated release artifact at $artifact"
+      echo "$artifact" > "$output/nim.txt"
+      endfold
+    }
     ;;
   *)
-    fold "Build docs"
-    # Build release docs
-    ./koch doc0 -d:release
-    endfold
+    time {
+      fold "Build docs"
+      # Build release docs
+      ./koch doc0 -d:release
+      endfold
+    }
 
-    fold "Generate release"
-    # Cleanup build artifacts
-    # TODO: Rework niminst to be able to build binary archives for non-Windows
-    rm -rf "$buildtmp"
-    find \
-      -name .git -prune -o \
-      -name c_code -prune -o \
-      -name nimcache -prune -o \
-      -name build.sh -o \
-      -name 'build*.bat' -o \
-      -name makefile -o \
-      -name '*.o' -o \
-      -path '*/compiler/nim' -o \
-      -path '*/compiler/nim?' | xargs rm -rf
+    time {
+      fold "Generate release"
+      # Cleanup build artifacts
+      # TODO: Rework niminst to be able to build binary archives for non-Windows
+      rm -rf "$buildtmp"
+      find \
+        -name .git -prune -o \
+        -name c_code -prune -o \
+        -name nimcache -prune -o \
+        -name build.sh -o \
+        -name 'build*.bat' -o \
+        -name makefile -o \
+        -name '*.o' -o \
+        -path '*/compiler/nim' -o \
+        -path '*/compiler/nim?' | xargs rm -rf
 
-    cd ..
+      cd ..
 
-    srcDir=$(basename "$1")
-    if [[ $srcDir != "nim-$version" ]]; then
-      # This is for people who build this locally...
-      ln -sf "$srcDir" "nim-$version"
-    fi
+      srcDir=$(basename "$1")
+      if [[ $srcDir != "nim-$version" ]]; then
+        # This is for people who build this locally...
+        ln -sf "$srcDir" "nim-$version"
+      fi
 
-    artifact=$output/nim-$version$suffix.tar
-    tar chf "$artifact" "nim-$version"
-    xz -9e "$artifact"
-    artifact=$artifact.xz
+      artifact=$output/nim-$version$suffix.tar
+      tar chf "$artifact" "nim-$version"
+      xz -9e "$artifact"
+      artifact=$artifact.xz
 
-    echo "Generated release artifact at $artifact"
-    echo "$artifact" > "$output/nim.txt"
-    endfold
+      echo "Generated release artifact at $artifact"
+      echo "$artifact" > "$output/nim.txt"
+      endfold
+    }
     ;;
 esac
