@@ -2,6 +2,16 @@
 
 # Support library for tools
 
+## realpath [path]
+##
+## Poor man's substitute for the real realpath
+if command -v realpath; then
+  realpath() {
+    cd "$(dirname "$1")" >/dev/null 2>&1
+    pwd -P
+  }
+fi
+
 ## error [message]..
 ##
 ## Pretty print error messages
