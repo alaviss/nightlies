@@ -122,8 +122,8 @@ jobs:
         id: nim-cache
         uses: actions/cache@v1
         with:
-          path: nim/nim-*.tar.xz
-          key: 'source-${{ matrix.setting.commit }}-test4'
+          path: nim/output/nim-*.tar.xz
+          key: 'source-${{ matrix.setting.commit }}-test5'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
