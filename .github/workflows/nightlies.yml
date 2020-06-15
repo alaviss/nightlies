@@ -279,14 +279,25 @@ jobs:
         uses: actions/cache@v2
         with:
           path: output
-          key: 'output-${{ hashFiles("nightlies/build-release.sh") }}-${{ matrix.target.triple }}-${{ matrix.setting.commit }}-test'
+          key: >
+            output
+            -test
+            -${{ hashFiles('nightlies/build-release.sh') }}
+            -${{ matrix.target.triple }}
+            -${{ matrix.setting.commit }}
 
       - name: Cache dependencies
         if: steps.built.outputs.cache-hit != 'true'
         uses: actions/cache@v2
         with:
           path: external
-          key: 'deps-${{ runner.os }}-${{ matrix.target.triple }}-${{ hashFiles("nightlies/deps.sh") }}-${{ hashFiles("nightlies/buildreq.txt") }}-test'
+          key: >
+            deps
+            -test
+            -${{ hashFiles('nightlies/deps.sh') }}
+            -${{ hashFiles('nightlies/buildreq.txt') }}
+            -${{ runner.os }}
+            -${{ matrix.target.triple }}
 
       - name: Install dependencies
         if: steps.built.outputs.cache-hit != 'true'
