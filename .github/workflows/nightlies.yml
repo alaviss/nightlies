@@ -305,6 +305,8 @@ jobs:
       - name: Install dependencies
         if: steps.built.outputs.cache-hit != 'true'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: nightlies/deps.sh -t '${{ matrix.target.triple }}'
 
       - name: Download generated source package
