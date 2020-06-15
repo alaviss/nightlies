@@ -269,25 +269,24 @@ jobs:
     name: '${{ matrix.target.triple }} (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Checkout build scripts
+        uses: actions/checkout@v2
+        with:
+          path: nightlies
+
       - name: Cache build outputs
         id: built
         uses: actions/cache@v2
         with:
           path: output
-          key: 'output-${{ matrix.target.triple }}-${{ matrix.setting.commit }}-test'
-
-      - name: Checkout build scripts
-        if: steps.built.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          path: nightlies
+          key: 'output-${{ hashFiles("nightlies/build-release.sh") }}-${{ matrix.target.triple }}-${{ matrix.setting.commit }}-test'
 
       - name: Cache dependencies
         if: steps.built.outputs.cache-hit != 'true'
         uses: actions/cache@v2
         with:
           path: external
-          key: 'deps-${{ runner.os }}-${{ matrix.target.triple }}-${{ hashFiles("deps.sh") }}-${{ hashFiles("buildreq.txt") }}-test'
+          key: 'deps-${{ runner.os }}-${{ matrix.target.triple }}-${{ hashFiles("nightlies/deps.sh") }}-${{ hashFiles("nightlies/buildreq.txt") }}-test'
 
       - name: Install dependencies
         if: steps.built.outputs.cache-hit != 'true'
