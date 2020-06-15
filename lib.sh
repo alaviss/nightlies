@@ -66,10 +66,10 @@ nativepath() {
   fi
   case "$(os)" in
     windows)
-      echo ${1/\//\\}
+      echo "${1/\//\\}"
       ;;
     *)
-      echo $1
+      echo "$1"
       ;;
   esac
 }
@@ -123,7 +123,8 @@ pushpath() {
       error "path must not be empty"
       return 1
     fi
-    local path=$(nativepath "$(realpath "$1")")
+    local path
+    path=$(nativepath "$(realpath "$1")")
     if [[ $1 == *$'\n'* ]]; then
       error "variable value must not contain newline"
       return 1
@@ -140,7 +141,7 @@ pushpath() {
 
   if $snippet; then
     echo "Environmental settings are appended to $PWD/environment"
-    (IFS=': '; echo "export PATH=${_pushpath_path[@]@Q}\"\${PATH:+:\$PATH}\"") >> environment
+    (IFS=': '; echo "export PATH=${_pushpath_path[*]@Q}\"\${PATH:+:\$PATH}\"") >> environment
   fi
 }
 

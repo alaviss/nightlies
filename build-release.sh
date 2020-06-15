@@ -6,6 +6,7 @@
 #
 # This script is licensed under the MIT license.
 
+# shellcheck disable=SC2034
 _rev=1 # Bump this variable to force rebuild.
        # This variable does not change the script behavior in anyway, but
        # will trigger a cache mismatch for CI services configured to hash
@@ -33,12 +34,13 @@ set -e
 set -o pipefail
 
 basedir=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
+# shellcheck source=lib.sh
 source "$basedir/lib.sh"
 
 output=$PWD/output
 outrel=$PWD
 deps=$PWD/external
-while getopts "o:v:h" curopt; do
+while getopts "o:v:d:h" curopt; do
   case "$curopt" in
     'o')
       output=$(realpath "$OPTARG")
@@ -67,6 +69,7 @@ fi
 
 if [[ -e $deps/environment ]]; then
   echo "Sourcing dependencies environment"
+  # shellcheck source=/dev/null
   source "$deps/environment"
 fi
 
@@ -75,14 +78,14 @@ mkdir -p "$output"
 cd "$1"
 
 if [[ $(os) == darwin ]]; then
-  : ${CC:=clang}
+  : "${CC:=clang}"
 else
-  : ${CC:=gcc}
+  : "${CC:=gcc}"
 fi
 
 export PATH=$PWD/bin${PATH:+:$PATH}
 
-cpu=$(arch_from_triple $($CC -dumpmachine))
+cpu=$(arch_from_triple "$($CC -dumpmachine)")
 
 TIMEFORMAT="Took %lR"
 
@@ -133,14 +136,17 @@ time {
   endfold
 }
 
-eval $(cat << EOF | nim secret --hints:off 2>/dev/null
+eval "$(cat << EOF | nim secret --hints:off 2>/dev/null
 echo "version=", NimVersion
 echo "os=", hostOS
 echo "cpu=", hostCPU
 echo "suffix=-", hostOS, "_", hostCPU
 quit 0
 EOF
-)
+)"
+
+# Fail if the variables are not declared (ie. nim couldn't run)
+: "${version:?}" "${os:?}" "${cpu:?}" "${suffix:?}"
 
 case "$os" in
   windows)
@@ -182,7 +188,8 @@ case "$os" in
       # Cleanup build artifacts
       # TODO: Rework niminst to be able to build binary archives for non-Windows
       rm -rf "$buildtmp"
-      find \
+      find . \
+        -print0 \
         -name .git -prune -o \
         -name c_code -prune -o \
         -name nimcache -prune -o \
@@ -191,7 +198,7 @@ case "$os" in
         -name makefile -o \
         -name '*.o' -o \
         -path '*/compiler/nim' -o \
-        -path '*/compiler/nim?' | xargs rm -rf
+        -path '*/compiler/nim?' | xargs -0 rm -rf
 
       cd ..
 
