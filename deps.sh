@@ -103,27 +103,6 @@ if [[ ! -d $output ]]; then
       gpg --quiet --verify -- "$toolchain.tgz.sig"
       tar xf "$toolchain.tgz"
 
-      # Hack: enforce static builds
-      rm "$toolchain/bin/$triple-gcc"
-      mv "$toolchain/bin/"{,$triple-}gcc
-      cat <<EOF >"$toolchain/bin/gcc"
-#!/usr/bin/env bash
-
-basedir=\$(dirname "\$(realpath "\${BASH_SOURCE[0]}")")
-exec -a gcc "\$basedir/$triple-gcc" -static "\$@"
-EOF
-      chmod 755 "$toolchain/bin/gcc"
-
-      rm "$toolchain/bin/$triple-g++"
-      mv "$toolchain/bin/"{,$triple-}g++
-      cat <<EOF >"$toolchain/bin/g++"
-#!/usr/bin/env bash
-
-basedir=\$(dirname "\$(realpath "\${BASH_SOURCE[0]}")")
-exec -a g++ "\$basedir/$triple-g++" -static "\$@"
-EOF
-      chmod 755 "$toolchain/bin/g++"
-
       xargs < "$basedir/buildreq.txt" "$basedir/bw-install.sh" -o "$toolchain" -t "$triple"
       ;;
     osx)
