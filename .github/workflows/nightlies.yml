@@ -2,12 +2,10 @@ name: Nightlies
 on:
   push:
     branches:
-      - master
-      - actions
+      - '*'
   pull_request:
     branches:
-      - master
-      - actions
+      - '*'
   schedule:
     - cron: '0 0 * * *'
 
@@ -17,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       settings: ${{ steps.settings.outputs.settings }}
+      deploy: ${{ steps.settings.outputs.deploy }}
     steps:
       - name: Checkout nightlies
         uses: actions/checkout@v2
@@ -46,8 +45,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: settings
-          key: build-test1-${{ hashFiles('versions.json') }}
-          restore-keys: build-test1-
+          key: build-test4-${{ hashFiles('versions.json') }}
+          restore-keys: build-test4
 
       - name: Generate build settings
         id: settings
@@ -55,6 +54,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          deploy='true' # In development, always deploy
+
           declare -A refs
 
           while IFS='=' read -r branch commit; do
@@ -89,7 +90,6 @@ jobs:
 
                 tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%H%M%S)-$branch-$commit
 
-
                 jq --null-input --arg tag "$tag" '{ release: $tag }'
 
               } | jq -s --arg commit "$commit" 'reduce .[] as $item ({ commit: $commit }; . + $item)' > "settings/$branch.json"
@@ -101,6 +101,7 @@ jobs:
           done
 
           echo "::set-output name=settings::$(jq -sc '.' settings.json)"
+          echo "::set-output name=deploy::$deploy"
 
   sourceArchive:
     needs: setup
@@ -121,7 +122,7 @@ jobs:
         id: nim-cache
         uses: actions/cache@v1
         with:
-          path: nim/output
+          path: nim/nim-*.tar.xz
           key: 'source-${{ matrix.setting.commit }}-test4'
 
       - name: Get latest csources version
@@ -184,19 +185,22 @@ jobs:
           nim c koch
           ./koch boot -d:release
 
+      - name: Generate csources
+        if: steps.nim-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          cd nim
+          ./koch csources -d:danger '-d:gitHash:${{ matrix.setting.commit }}'
+
       - name: Build source archive
         if: steps.nim-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           cd nim
-          ./koch csources -d:danger
           ./koch xz
 
-          mkdir -p output
-          cp build/nim-*.tar.xz output
-
       - name: Publish release
-        if: steps.nim-cache.outputs.cache-hit != 'true'
+        if: steps.nim-cache.outputs.cache-hit != 'true' && needs.setup.outputs.deploy == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -204,10 +208,10 @@ jobs:
           tag=$(git -C nim describe --tags $(git -C nim rev-list --tags --max-count=1))
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
-          cat << EOF | hub -C nightlies release create -a nim/output/*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
+          cat << EOF | hub -C nightlies release create -a nim/nim-*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
           Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch ${{ matrix.setting.branch }}
 
-          Commit: https://github.com/nim-lang/Nim/commit/$commit
+          Commit: https://github.com/nim-lang/Nim/commit/${{ matrix.setting.commit }}
 
           Generated release binaries will be uploaded as they're made available.
 
@@ -237,24 +241,19 @@ jobs:
         setting: ${{ fromJson(needs.setup.outputs.settings) }}
         target:
           - os: linux
-            cpu: amd64
             triple: x86_64-linux-musl
           - os: linux
-            cpu: i386
             triple: i686-linux-musl
           - os: linux
-            cpu: aarch64
             triple: aarch64-linux-musl
           - os: linux
-            cpu: armv7l
             triple: armv7l-linux-musleabihf
           - os: macosx
-            cpu: amd64
+            triple: x86_64-apple-darwin14
           - os: windows
-            cpu: amd64
-            docs: true
+            triple: x86_64-w64-mingw32
           - os: windows
-            cpu: i386
+            triple: i686-w64-mingw32
         include:
           - target:
               os: linux
@@ -267,118 +266,43 @@ jobs:
             builder: windows-2019
 
     env: ${{ matrix.setting.environment }}
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }} (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
+    name: '${{ matrix.target.triple }} (${{ matrix.setting.branch }}, ${{ matrix.setting.commit }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Cache build outputs
+        id: built
+        uses: actions/cache@v2
+        with:
+          path: output
+          key: 'output-${{ matrix.target.triple }}-${{ matrix.setting.commit }}-test'
+
       - name: Checkout build scripts
+        if: steps.built.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           path: nightlies
 
-      - name: Cache dependencies (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/cache@v1
+      - name: Cache dependencies
+        if: steps.built.outputs.cache-hit != 'true'
+        uses: actions/cache@v2
         with:
           path: external
-          key: 'deps-windows-${{ matrix.target.cpu }}-test1'
+          key: 'deps-${{ runner.os }}-${{ matrix.target.triple }}-${{ hashFiles("deps.sh") }}-${{ hashFiles("buildreq.txt") }}-test'
 
-      - name: Install dependencies (Windows)
-        if: runner.os == 'Windows'
+      - name: Install dependencies
+        if: steps.built.outputs.cache-hit != 'true'
         shell: bash
-        run: |
-          case '${{ matrix.target.cpu }}' in
-            amd64)
-              arch=64
-              ;;
-            i386)
-              arch=32
-              ;;
-            *)
-              echo 'ERROR: Unsupported architecture ''${{ matrix.target.cpu }}'''
-              exit 1
-              ;;
-          esac
-
-          if [[ ! -d external ]]; then
-            mkdir external
-            cd external
-
-            curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "mingw$arch.7z"
-            curl -L "https://nim-lang.org/download/windeps.zip" -o "windeps.zip"
-
-            7z x "mingw$arch.7z"
-            7z x -odlls "windeps.zip"
-          else
-            echo "Using cached dependencies"
-          fi
-
-          echo '::add-path::${{ github.workspace }}/external/'"mingw$arch"'/bin'
-          echo '::add-path::${{ github.workspace }}/external/dlls'
-          echo "::set-env name=arch::$arch"
-
-      - name: Install dependencies (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p external
-          cd external
-          # Import GPG key
-          curl -L https://zv.io/BE4BF7E6811C5BA41345C11EB1D0B4566FBBDB40.asc | gpg --import
-
-          musl_toolchain='${{ matrix.target.triple }}'-native
-          curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz"
-          curl -LO "https://more.musl.cc/9.3.0/i686-linux-musl/$musl_toolchain.tgz.sig"
-
-          gpg --quiet --verify "$musl_toolchain.tgz.sig"
-          tar xzf "$musl_toolchain.tgz"
-
-          echo '::add-path::${{ github.workspace }}/external/'"$musl_toolchain"'/bin'
-
-          xargs < '../nightlies/buildreq.txt' '../nightlies/bw-install.sh' -o "$musl_toolchain" -t '${{ matrix.target.triple }}'
-
-          case '${{ matrix.target.arch }}' in
-            i386 | amd64)
-              ;;
-            *)
-              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-              ;;
-          esac
-
-          ldflags=(-static -Wl,--as-needed -lssl -lcrypto -lpcre -lsqlite3)
-          nimflags=(
-            $(printf -- "--passL:%s " "${ldflags[@]}")
-            --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
-            --dynlibOverrideAll
-          )
-          echo "::set-env name=LDFLAGS::${ldflags[@]}"
-          echo "::set-env name=NIMFLAGS::${nimflags[@]}"
-
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          xargs < 'nightlies/buildreq.txt' 'nightlies/bw-install.sh' -o external
-
-          ldflags=($(printf -- "$PWD/external/lib/%s " libssl.a libcrypto.a libpcre.a libsqlite3.a))
-          nimflags=(
-            $(printf -- "--passL:%s " "${ldflags[@]}")
-            --dynlibOverride:ssl # Needed to disable auto version selection in the wrapper
-            --dynlibOverrideAll
-          )
-          echo "::set-env name=LDFLAGS::${ldflags[@]}"
-          echo "::set-env name=NIMFLAGS::${nimflags[@]}"
+        run: nightlies/deps.sh -t '${{ matrix.target.triple }}'
 
       - name: Download generated source package
+        if: steps.built.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v2
         with:
           name: 'nim-${{ matrix.setting.commit }}'
           path: source
 
       - name: Extract source package
+        if: steps.built.outputs.cache-hit != 'true'
         id: source
         shell: bash
         run: |
@@ -397,94 +321,34 @@ jobs:
           echo "::set-output name=version::$version"
 
       - name: Setup environment
-        shell: bash
-        run: echo '::add-path::${{ github.workspace }}/nim-${{ steps.source.outputs.version }}/bin'
-
-      - name: Build 1-stage csources compiler
+        if: steps.built.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          cd 'nim-${{ steps.source.outputs.version }}'
-          nproc=
-          case '${{ runner.os }}' in
-            'Windows')
-              nproc=$NUMBER_OF_PROCESSORS
-              ;;
-            'macOS')
-              nproc=$(sysctl -n hw.ncpu)
-              ;;
-            'Linux')
-              nproc=$(nproc)
-              ;;
-          esac
-          if [[ $nproc -le 0 ]]; then
-            nproc=1
-          fi
+          echo "-d:gitHash:${{ matrix.setting.commit }}" >> external/nim.cfg
 
-          make -j$nproc CC=gcc ucpu='${{ matrix.target.cpu }}'
-
-      - name: Build koch
+      - name: Build release binaries
+        if: steps.built.outputs.cache-hit != 'true'
+        id: release
         shell: bash
         run: |
-          cd 'nim-${{ steps.source.outputs.version }}'
-          nim c $NIMFLAGS koch
+          nightlies/build-release.sh 'nim-${{ steps.source.outputs.version }}'
 
-      - name: Build compiler
-        shell: bash
-        run: |
-          cd 'nim-${{ steps.source.outputs.version }}'
-          ./koch boot -d:release $NIMFLAGS
+          artifact=$(< output/nim.txt)
+          echo "::set-output name=artifact_name::$(basename "$artifact")"
+          echo "::set-output name=artifact::$artifact"
 
-      - name: Build tools
-        shell: bash
-        run: |
-          cd 'nim-${{ steps.source.outputs.version }}'
-          ./koch tools -d:release $NIMFLAGS
-
-      - name: Generate release zip files (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          nim='nim-${{ steps.source.outputs.version }}'
-          cd "$nim"
-          mkdir -p web/upload/download
-
-          nim c $NIMFLAGS --outdir:. tools/winrelease
-          ./winrelease
-
-          artifact=${nim}_x$arch.zip
-          cp -t '${{ github.workspace }}' "web/upload/download/"{"$artifact",'docs-${{ steps.source.outputs.version }}.zip'}
-          echo "::set-env name=artifact::$artifact"
-
-      - name: Generate release tarball (non-Windows)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          nim='nim-${{ steps.source.outputs.version }}'
-          find "$nim" \
-            -name nimcache -prune -o \
-            -name '*.o' -o \
-            -path '*/compiler/nim' -o \
-            -path '*/compiler/nim?' | xargs rm -rf
-
-          release=$nim-'${{ matrix.target.os }}_${{ matrix.target.cpu }}'
-          tar cf "$release.tar" "$nim"
-          xz -9e "$release.tar"
-
-          echo "::set-env name=artifact::$release.tar.xz"
-
-      - name: Upload generated binaries
+      - name: Upload release binaries
+        if: steps.built.outputs.cache-hit != 'true' && needs.setup.outputs.deploy == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
-          hub release edit -m '' -a '../${{ env.artifact }}' '${{ matrix.setting.release }}'
+          hub release edit -m '' -a '${{ steps.release.outputs.artifact }}' '${{ matrix.setting.release }}'
 
-      - name: Upload generated docs
-        if: runner.os == 'Windows' && matrix.target.docs == true
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd nightlies
-          hub release edit -m '' -a '../docs-${{ steps.source.outputs.version }}.zip' '${{ matrix.setting.release }}'
+      - name: Upload binaries to artifacts
+        if: steps.built.outputs.cache-hit != 'true' && needs.setup.outputs.deploy != 'true'
+        uses: actions/upload-artifact@v2
+        with:
+          name: '${{ steps.release.outputs.artifact_name }}'
+          path: '${{ steps.release.outputs.artifact }}'
