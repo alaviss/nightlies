@@ -194,6 +194,7 @@ case "$os" in
           -name .git -prune -o \
           -name c_code -prune -o \
           -name nimcache -prune -o \
+          -name web -prune -o \
           -name build.sh -o \
           -name 'build*.bat' -o \
           -name makefile -o \
