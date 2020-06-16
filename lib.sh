@@ -11,6 +11,13 @@ if ! command -v realpath >/dev/null 2>&1; then
   }
 fi
 
+## is-var <varname>
+##
+## Check if a variable is set
+is-var() {
+  test -n "${!1+z}"
+}
+
 ## error [message]..
 ##
 ## Pretty print error messages
@@ -102,7 +109,7 @@ pushenv() {
       error "variable value must not contain newline"
       return 1
     fi
-    if [[ -v GITHUB_ACTIONS ]]; then
+    if is-var GITHUB_ACTIONS; then
       echo "::set-env name=$name::$value"
     else
       if $printNotice; then
@@ -138,7 +145,7 @@ pushpath() {
       error "variable value must not contain newline"
       return 1
     fi
-    if [[ -v GITHUB_ACTIONS ]]; then
+    if is-var GITHUB_ACTIONS; then
       echo "::add-path::$path"
     else
       snippet=true
@@ -158,7 +165,7 @@ pushpath() {
 ##
 ## Start output fold with description `desc`
 fold() {
-  if [[ -v GITHUB_ACTIONS ]]; then
+  if is-var GITHUB_ACTIONS; then
     echo "::group::$*"
   fi
 }
@@ -167,7 +174,7 @@ fold() {
 ##
 ## End the last output fold
 endfold() {
-  if [[ -v GITHUB_ACTIONS ]]; then
+  if is-var GITHUB_ACTIONS; then
     echo "::endgroup::"
   fi
 }
