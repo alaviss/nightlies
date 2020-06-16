@@ -196,7 +196,7 @@ case "$os" in
           -name makefile -o \
           -name '*.o' -o \
           -path '*/compiler/nim' -o \
-          -path '*/compiler/nim?'
+          -path '*/compiler/nim?' \
         \) \
         -exec rm -rf '{}' +
 
