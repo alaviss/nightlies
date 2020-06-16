@@ -165,9 +165,7 @@ jobs:
 
       - name: Setup environment
         shell: bash
-        run: |
-          echo 'PATH: ' "$PATH"
-          echo '::add-path::${{ github.workspace }}/nim/bin'
+        run: echo '::add-path::${{ github.workspace }}/nim/bin'
 
       - name: Build 1-stage csources compiler
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -342,6 +340,7 @@ jobs:
         if: steps.built.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          echo 'PATH: ' "$PATH"
           echo "-d:gitHash:\"${{ matrix.setting.commit }}\"" >> external/nim.cfg
 
       - name: Build release binaries
