@@ -144,12 +144,8 @@ pushpath() {
       error "variable value must not contain newline"
       return 1
     fi
-    if is-var GITHUB_ACTIONS; then
-      echo "::add-path::$path"
-    else
-      snippet=true
-      _pushpath_path=( "$path" "${_pushpath_path[@]}" )
-    fi
+    snippet=true
+    _pushpath_path=( "$path" "${_pushpath_path[@]}" )
 
     shift 1
   done
