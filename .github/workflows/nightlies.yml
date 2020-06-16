@@ -362,7 +362,7 @@ jobs:
           echo "::set-output name=artifact::$artifact"
 
       - name: Upload release binaries
-        if: steps.built.outputs.cache-hit != 'true' && needs.setup.outputs.deploy == 'true'
+        if: needs.setup.outputs.deploy == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -371,7 +371,7 @@ jobs:
           hub release edit -m '' -a '${{ steps.release.outputs.artifact }}' '${{ matrix.setting.release }}'
 
       - name: Upload binaries to artifacts
-        if: steps.built.outputs.cache-hit != 'true' && needs.setup.outputs.deploy != 'true'
+        if: needs.setup.outputs.deploy != 'true'
         uses: actions/upload-artifact@v2
         with:
           name: '${{ steps.release.outputs.artifact_name }}'
