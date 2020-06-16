@@ -352,12 +352,16 @@ jobs:
 
       - name: Build release binaries
         if: steps.built.outputs.cache-hit != 'true'
-        id: release
         shell: bash
         run: |
           nightlies/build-release.sh 'nim-${{ steps.source.outputs.version }}'
 
+      - name: Prepare binaries for uploads
+        id: release
+        shell: bash
+        run: |
           artifact=$(< output/nim.txt)
+          ls output
           echo "::set-output name=artifact_name::$(basename "$artifact")"
           echo "::set-output name=artifact::$artifact"
 
