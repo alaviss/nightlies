@@ -32,8 +32,7 @@ os() {
   if [[ $OS == Windows_NT ]]; then
     echo windows
   else
-    os=$(uname)
-    echo "${os,,}"
+    uname | tr '[:upper:]' '[:lower:]'
   fi
 }
 
