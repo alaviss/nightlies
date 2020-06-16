@@ -149,6 +149,9 @@ case "$os" in
   windows)
     time {
       fold "Generate release"
+
+      mkdir -p web/upload/download
+
       nim c --outdir:. tools/winrelease
       ./winrelease
 
