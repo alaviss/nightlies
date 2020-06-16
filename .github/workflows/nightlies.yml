@@ -45,8 +45,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: settings
-          key: build-test5-${{ hashFiles('versions.json') }}
-          restore-keys: build-test5
+          key: build-rc1-${{ hashFiles('versions.json') }}
+          restore-keys: build-rc1
 
       - name: Generate build settings
         id: settings
@@ -54,7 +54,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          deploy='true' # In development, always deploy
+          deploy=false
+          if [[ '${{ github.event_name }}' == schedule ]]; then
+            deploy=true
+          fi
 
           declare -A refs
 
@@ -88,7 +91,7 @@ jobs:
                   done
                 } | jq -s '{ environment: (reduce .[] as $item (null; . + $item)) }'
 
-                tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F-%H%M%S)-$branch-$commit
+                tag=$(date -u --date="@${environment[SOURCE_CODE_EPOCH]}" +%F)-$branch-$commit
 
                 jq --null-input --arg tag "$tag" '{ release: $tag }'
 
@@ -124,7 +127,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: nim/output/nim-*.tar.xz
-          key: 'source-${{ matrix.setting.commit }}-test5'
+          key: 'source-rc1-${{ matrix.setting.commit }}'
 
       - name: Get latest csources version
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -143,7 +146,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: csources/bin
-          key: 'csources-${{ runner.os }}-${{ steps.csources-version.outputs.commit }}-test'
+          key: 'csources-rc1-${{ runner.os }}-${{ steps.csources-version.outputs.commit }}'
 
       - name: Checkout Nim
         if: steps.nim-cache.outputs.cache-hit != 'true'
@@ -213,7 +216,7 @@ jobs:
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
           cat << EOF | hub -C nightlies release create -a nim/output/nim-*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
-          Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F %T") for branch ${{ matrix.setting.branch }}
+          Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F") for branch ${{ matrix.setting.branch }}
 
           Commit: https://github.com/nim-lang/Nim/commit/${{ matrix.setting.commit }}
 
@@ -285,7 +288,7 @@ jobs:
           path: output
           key: >
             output
-            -test
+            -rc1
             -${{ hashFiles('nightlies/build-release.sh') }}
             -${{ matrix.target.triple }}
             -${{ matrix.setting.commit }}
@@ -297,7 +300,7 @@ jobs:
           path: external
           key: >
             deps
-            -test
+            -rc1
             -${{ hashFiles('nightlies/deps.sh') }}
             -${{ hashFiles('nightlies/buildreq.txt') }}
             -${{ runner.os }}
