@@ -100,10 +100,9 @@ buildtmp=$PWD/build
 mkdir -p -- "$buildtmp/nim"
 
 export XDG_CONFIG_HOME=$buildtmp
+export XDG_CACHE_HOME=$buildtmp/nimcache
 
-cat <<EOF > "$buildtmp/nim/nim.cfg"
-nimcache="$buildtmp/nimcache"
-EOF
+rm -f "$buildtmp/nim/nim.cfg"
 
 if [[ -n "$CFLAGS" ]]; then
   echo "passC%=\"\$CFLAGS\"" >> "$buildtmp/nim/nim.cfg"
