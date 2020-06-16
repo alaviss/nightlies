@@ -85,13 +85,11 @@ fi
 
 export PATH=$PWD/bin${PATH:+:$PATH}
 
-cpu=$(arch_from_triple "$($CC -dumpmachine)")
-
 TIMEFORMAT="Took %lR"
 
 time {
   fold "Build 1-stage csources compiler"
-  make "-j$(ncpu)" ucpu="$cpu" CC="$CC"
+  make "-j$(ncpu)" ucpu="$(arch_from_triple "$($CC -dumpmachine)")" CC="$CC"
   endfold
 }
 

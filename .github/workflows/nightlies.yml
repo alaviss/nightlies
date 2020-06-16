@@ -340,7 +340,6 @@ jobs:
         if: steps.built.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo 'PATH: ' "$PATH"
           echo "-d:gitHash:\"${{ matrix.setting.commit }}\"" >> external/nim.cfg
 
       - name: Build release binaries

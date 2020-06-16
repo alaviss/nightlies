@@ -139,7 +139,7 @@ pushpath() {
       return 1
     fi
     local path
-    path=$(nativepath "$(realpath "$1")")
+    path=$(realpath "$1")
     if [[ $1 == *$'\n'* ]]; then
       error "variable value must not contain newline"
       return 1
