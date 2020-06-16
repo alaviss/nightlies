@@ -2,7 +2,8 @@ name: Nightlies
 on:
   push:
     branches:
-      - '*'
+      - master
+      - actions
   pull_request:
     branches:
       - '*'
@@ -55,9 +56,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           deploy=false
-          if [[ '${{ github.event_name }}' == schedule ]]; then
-            deploy=true
-          fi
+          case '${{ github.event_name }}' in
+            schedule | push)
+              deploy=true
+              ;;
+          esac
 
           declare -A refs
 
