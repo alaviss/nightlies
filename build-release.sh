@@ -189,16 +189,18 @@ case "$os" in
       rm -rf "$buildtmp"
       find . \
         -mindepth 1 \
-        -print0 \
-        -name .git -prune -o \
-        -name c_code -prune -o \
-        -name nimcache -prune -o \
-        -name build.sh -o \
-        -name 'build*.bat' -o \
-        -name makefile -o \
-        -name '*.o' -o \
-        -path '*/compiler/nim' -o \
-        -path '*/compiler/nim?' | xargs -0 rm -rf
+        \( \
+          -name .git -prune -o \
+          -name c_code -prune -o \
+          -name nimcache -prune -o \
+          -name build.sh -o \
+          -name 'build*.bat' -o \
+          -name makefile -o \
+          -name '*.o' -o \
+          -path '*/compiler/nim' -o \
+          -path '*/compiler/nim?'
+        \) \
+        -exec rm -rf '{}' +
 
       cd ..
 
