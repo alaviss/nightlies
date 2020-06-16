@@ -189,6 +189,7 @@ case "$os" in
       # TODO: Rework niminst to be able to build binary archives for non-Windows
       rm -rf "$buildtmp"
       find . \
+        -mindepth 1 \
         -print0 \
         -name .git -prune -o \
         -name c_code -prune -o \
