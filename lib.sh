@@ -5,10 +5,9 @@
 ## realpath [path]
 ##
 ## Poor man's substitute for the real realpath
-if command -v realpath; then
+if ! command -v realpath >/dev/null 2>&1; then
   realpath() {
-    cd "$(dirname "$1")" >/dev/null 2>&1
-    pwd -P
+    python -c "import os; import sys; print(os.path.realpath(sys.argv[1]))" "$1"
   }
 fi
 
