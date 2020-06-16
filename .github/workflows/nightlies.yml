@@ -360,9 +360,15 @@ jobs:
         id: release
         shell: bash
         run: |
+          source nightlies/lib.sh
+
           artifact=$(< output/nim.txt)
-          ls output
           echo "::set-output name=artifact_name::$(basename "$artifact")"
+          if [[ '${{ needs.setup.outputs.deploy }}' != true ]]; then
+            # Github Actions work based on native Windows path, so we're doing
+            # some quick conversions here.
+            artifact=$(nativepath "$artifact")
+          fi
           echo "::set-output name=artifact::$artifact"
 
       - name: Upload release binaries
