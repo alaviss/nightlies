@@ -87,9 +87,11 @@ export PATH=$PWD/bin${PATH:+:$PATH}
 
 TIMEFORMAT="Took %lR"
 
+cpu=$(arch_from_triple "$($CC -dumpmachine)")
+
 time {
   fold "Build 1-stage csources compiler"
-  make "-j$(ncpu)" ucpu="$(arch_from_triple "$($CC -dumpmachine)")" CC="$CC"
+  make "-j$(ncpu)" ucpu="$cpu" CC="$CC"
   endfold
 }
 
@@ -136,14 +138,29 @@ time {
 eval "$(cat << EOF | nim secret --hints:off 2>/dev/null
 echo "version=", NimVersion
 echo "os=", hostOS
-echo "cpu=", hostCPU
-echo "suffix=-", hostOS, "_", hostCPU
 quit 0
 EOF
 )"
 
 # Fail if the variables are not declared (ie. nim couldn't run)
-: "${version:?}" "${os:?}" "${cpu:?}" "${suffix:?}"
+: "${version:?}" "${os:?}"
+
+suffix=-${os}_
+
+case "$cpu" in
+  i?86)
+    suffix+=x32
+    ;;
+  x86_64)
+    suffix+=x64
+    ;;
+  aarch64)
+    suffix+=arm64
+    ;;
+  *)
+    suffix+=$cpu
+    ;;
+esac
 
 case "$os" in
   windows)
@@ -157,18 +174,6 @@ case "$os" in
 
       nim c --outdir:. tools/winrelease
       ./winrelease
-
-      case "$cpu" in
-        amd64)
-          suffix=_x64
-          ;;
-        i386)
-          suffix=_x32
-          ;;
-        *)
-          echo "unsupported cpu: '$cpu', using standard suffix: $suffix"
-          ;;
-      esac
 
       cp -t "$output" "web/upload/download/nim-${version}$suffix.zip"
       artifact=$output/nim-${version}$suffix.zip

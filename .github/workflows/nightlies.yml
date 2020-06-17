@@ -46,8 +46,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: settings
-          key: build-rc1-${{ hashFiles('versions.json') }}
-          restore-keys: build-rc1
+          key: build-rc2-${{ hashFiles('versions.json') }}
+          restore-keys: build-rc2
 
       - name: Generate build settings
         id: settings
@@ -221,7 +221,7 @@ jobs:
           cp build/nim-*.tar.xz output
 
       - name: Publish release
-        if: steps.nim-cache.outputs.cache-hit != 'true' && needs.setup.outputs.deploy == 'true'
+        if: needs.setup.outputs.deploy == 'true'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -229,7 +229,8 @@ jobs:
           tag=$(git -C nim describe --tags $(git -C nim rev-list --tags --max-count=1))
           link=https://github.com/nim-lang/Nim/releases/tag/$tag
 
-          cat << EOF | hub -C nightlies release create -a nim/output/nim-*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
+          if ! hub release show '${{ matrix.settings.release }}' >/dev/null 2>&1; then
+            cat << EOF | hub -C nightlies release create -a nim/output/nim-*.tar.xz -F - '${{ matrix.setting.release }}' >/dev/null
           Nightly build on $(date -u --date="@$SOURCE_CODE_EPOCH" "+%F") for branch ${{ matrix.setting.branch }}
 
           Commit: https://github.com/nim-lang/Nim/commit/${{ matrix.setting.commit }}
@@ -246,6 +247,7 @@ jobs:
 
           </details>
           EOF
+          fi
 
       - name: Upload source archive to artifacts
         uses: actions/upload-artifact@v2
