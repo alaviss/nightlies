@@ -81,7 +81,7 @@ nativepath() {
   fi
   case "$(os)" in
     windows)
-      sed -e 's|^/(.)|\1:|' -e 's|/|\\|g' <<< "$1"
+      sed -e 's|^/\(.\)|\1:|' -e 's|/|\\\\|g' <<< "$1"
       ;;
     *)
       echo "$1"
