@@ -187,7 +187,7 @@ case "$os" in
   *)
     major=${version%%.*}
     minor=${version#*.}
-    minor=${version%.*}
+    minor=${minor%.*}
     patch=${version##*.}
     docflags=(-d:release)
     if [[ $major -ge 1 && $minor -ge 3 && $path -ge 5 ]]; then
