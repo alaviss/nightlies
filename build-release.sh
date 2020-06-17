@@ -171,7 +171,7 @@ case "$os" in
       mkdir -p web/upload/download
 
       # Package DLLs
-      cp -t bin $deps/dlls/*.dll
+      cp -t bin "$deps/dlls/"*.dll
 
       nim c --outdir:. tools/winrelease
       ./winrelease
@@ -190,7 +190,7 @@ case "$os" in
     minor=${version%.*}
     patch=${version##*.}
     docflags=(-d:release)
-    if [[ $major -ge 1 -a $minor -ge 3 -a $path -ge 5 ]]; then
+    if [[ $major -ge 1 && $minor -ge 3 && $path -ge 5 ]]; then
       # Skip runnable examples when supported. This speeds up the build
       # by a huge margin, esp. on non-native archs.
       docflags+=(--doccmd:skip)
