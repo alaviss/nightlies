@@ -145,22 +145,23 @@ EOF
 # Fail if the variables are not declared (ie. nim couldn't run)
 : "${version:?}" "${os:?}"
 
-suffix=-${os}_
-
+cpusuffix=
 case "$cpu" in
   i?86)
-    suffix+=x32
+    cpusuffix=_x32
     ;;
   x86_64)
-    suffix+=x64
+    cpusuffix=_x64
     ;;
   aarch64)
-    suffix+=arm64
+    cpusuffix=_arm64
     ;;
   *)
-    suffix+=$cpu
+    cpusuffix=_$cpu
     ;;
 esac
+
+suffix=-${os}$cpusuffix
 
 case "$os" in
   windows)
@@ -175,8 +176,8 @@ case "$os" in
       nim c --outdir:. tools/winrelease
       ./winrelease
 
-      cp -t "$output" "web/upload/download/nim-${version}$suffix.zip"
       artifact=$output/nim-${version}$suffix.zip
+      cp "web/upload/download/nim-${version}$cpusuffix.zip" "$artifact"
 
       echo "Generated release artifact at $artifact"
       echo "$artifact" > "$output/nim.txt"
