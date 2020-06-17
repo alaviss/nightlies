@@ -198,7 +198,7 @@ case "$os" in
     time {
       fold "Build docs"
       # Build release docs
-      ./koch doc0 "${docflags[@]}"
+      ./koch docs "${docflags[@]}"
       endfold
     }
 
