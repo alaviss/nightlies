@@ -129,12 +129,6 @@ time {
   endfold
 }
 
-time {
-  fold "Build tools"
-  ./koch tools -d:release
-  endfold
-}
-
 eval "$(cat << EOF | nim secret --hints:off 2>/dev/null
 echo "version=", NimVersion
 echo "os=", hostOS
@@ -185,6 +179,12 @@ case "$os" in
     }
     ;;
   *)
+    time {
+      fold "Build tools"
+      ./koch tools -d:release
+      endfold
+    }
+
     major=${version%%.*}
     minor=${version#*.}
     minor=${minor%.*}
