@@ -233,6 +233,8 @@ jobs:
 
           Generated release binaries will be uploaded as they're made available.
           EOF
+          else
+            echo "Release '${{ matrix.setting.release }}' has already been created, skipping."
           fi
 
       - name: Upload source archive to artifacts
@@ -366,7 +368,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd nightlies
-          hub release edit -m '' -a '${{ steps.release.outputs.artifact }}' '${{ matrix.setting.release }}'
+          if ! hub release show -f '%as' '${{ matrix.setting.release }}' | grep '${{ steps.release.outputs.artifact_name }}' >/dev/null 2>&1; then
+            hub release edit -m '' -a '${{ steps.release.outputs.artifact }}' '${{ matrix.setting.release }}'
+          else
+            echo "Binary already released for tag '${{ matrix.setting.release }}', not overwritting."
+          fi
 
       - name: Upload binaries to artifacts
         if: needs.setup.outputs.deploy != 'true'
