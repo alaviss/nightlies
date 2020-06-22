@@ -138,6 +138,9 @@ case "$(os)" in
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           ;;
       esac
+
+      # Starting from musl 1.2.0, time_t is 64 bit on all arches
+      echo "-d:nimUse64BitCTime" >> nim.cfg
     else
       libdir=$(realpath lib)
       cflags+=(-target "$triple")
