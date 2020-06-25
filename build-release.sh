@@ -189,16 +189,16 @@ case "$os" in
     minor=${version#*.}
     minor=${minor%.*}
     patch=${version##*.}
-    docflags=(-d:release)
+    doc=(docs -d:release)
     if [[ $major -ge 1 && $minor -ge 3 && $path -ge 5 ]]; then
-      # Skip runnable examples when supported. This speeds up the build
-      # by a huge margin, esp. on non-native archs.
-      docflags+=(--doccmd:skip)
+      # Skip runnable examples and web docs build when supported. This speeds
+      # up the build by a huge margin, esp. on non-native archs.
+      doc=(--localdocs "${doc[@]}" --doccmd:skip)
     fi
     time {
       fold "Build docs"
       # Build release docs
-      ./koch docs "${docflags[@]}"
+      ./koch "${doc[@]}"
       endfold
     }
 
