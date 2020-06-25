@@ -190,7 +190,7 @@ case "$os" in
     minor=${minor%.*}
     patch=${version##*.}
     doc=(docs -d:release)
-    if [[ $major -ge 1 && $minor -ge 3 && $path -ge 5 ]]; then
+    if [[ $major -ge 1 && $minor -ge 3 && $patch -ge 5 ]]; then
       # Skip runnable examples and web docs build when supported. This speeds
       # up the build by a huge margin, esp. on non-native archs.
       doc=(--localdocs "${doc[@]}" --doccmd:skip)
