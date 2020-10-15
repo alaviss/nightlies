@@ -451,11 +451,24 @@ jobs:
 
           source=(source/*)
           echo "Uploading ${source[0]}"
-          hub -C nightlies release edit -m '' -a "${source[0]}" "$tag"
+          hub -C nightlies release edit -m '' -a "${source[0]}#Source code" "$tag"
 
           for artifact in binaries/*; do
             echo "Uploading $artifact"
-            hub -C nightlies release edit -m '' -a "$artifact" "$tag"
+            osArchCombi=${artifact##*nim-*-}
+            osArchCombi=${osArchCombi%%.*}
+            os=${osArchCombi%%_*}
+            os=${os^}
+            arch=${osArchCombi##*_}
+            case "$arch" in
+              x64)
+                arch=amd64
+                ;;
+              x32)
+                arch=i386
+                ;;
+            esac
+            hub -C nightlies release edit -m '' -a "$artifact#Prebuilt binary for $os on $arch" "$tag"
           done
 
           echo "Publishing $tag"
