@@ -450,12 +450,17 @@ jobs:
           EOF
 
           source=(source/*)
-          echo "Uploading ${source[0]}"
-          hub -C nightlies release edit -m '' -a "${source[0]}" "$tag"
+          ext=${source#nim-*.*.*.}
+          ln -sv "${source[0]}" "source/source.$ext"
+          echo "Uploading ${source[0]} as source.$ext"
+          hub -C nightlies release edit -m '' -a "source/source.$ext" "$tag"
 
           for artifact in binaries/*; do
-            echo "Uploading $artifact"
-            hub -C nightlies release edit -m '' -a "$artifact" "$tag"
+            # Trim version from artifact name
+            shortName=${artifact#*nim-*-}
+            ln -sv "$artifact" "binaries/$shortName"
+            echo "Uploading $artifact as $shortName"
+            hub -C nightlies release edit -m '' -a "binaries/$shortName" "$tag"
           done
 
           echo "Publishing $tag"
